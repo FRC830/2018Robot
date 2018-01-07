@@ -1,0 +1,3 @@
+[submodule "Lib830"]
+	path = Lib830
+	url = https://github.com/FRC830/Lib830.git
