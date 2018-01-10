@@ -11,11 +11,9 @@
 #include "GripPipeline.h"
 #include <thread>
 
-using namespace Lib830;
 
 class Robot: public frc::IterativeRobot {
 public:
-	static Toggle vision;
 	static void CameraPeriodic() {
 		CameraServer *server;
 		grip::GripPipeline * pipeline;
@@ -37,7 +35,7 @@ public:
 		sink = server->GetVideo();
 		outputStream = server->PutVideo("Processed", 320, 240);
 
-		vision = true;
+
 		while(1) {
 			bool working = sink.GrabFrame(temp_image);
 			SmartDashboard::PutBoolean("working", working);
@@ -49,9 +47,9 @@ public:
 			if (!g_frame) {
 				continue;
 			}
-			if (vision) {
-				pipeline->Process(image);
-			}
+
+			pipeline->Process(image);
+
 
 
 			//outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
@@ -61,22 +59,6 @@ public:
 
 	}
 
-	static const int DIO_RED = 0;
-	static const int DIO_GREEN = 1;
-	static const int DIO_BLUE = 2;
-
-	Lib830::DigitalLED *led;
-
-	Lib830::GamepadF310 *pilot;
-
-	static const int TEST_PWM = 0;
-
-	VictorSP * test;
-
-	float StraifVisionCorrect(){
-		float midx = SmartDashboard::GetNumber("mid point x", 160);
-		return (midx-160)/-160;
-	}
 
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
@@ -85,12 +67,6 @@ public:
 
 		std::thread visionThread(CameraPeriodic);
 		visionThread.detach();
-
-		led = new DigitalLED( new DigitalOutput(DIO_RED), new DigitalOutput(DIO_GREEN), new DigitalOutput(DIO_BLUE));
-		pilot = new GamepadF310(0);
-
-		test = new VictorSP(TEST_PWM);
-
 
 	}
 
@@ -131,21 +107,12 @@ public:
 	}
 
 	void TeleopPeriodic() {
-		if (pilot->ButtonState(GamepadF310::BUTTON_A)){
-			SmartDashboard::PutNumber("Straife speed", StraifVisionCorrect());
-		}
 
-		led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
-
-		test->Set(pilot->RightY());
 	}
 
 	void TestPeriodic() {
 		//lw->Run();
-		led->Disable();
-	}
-	void RobotPeriodic() {
-		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
+
 	}
 
 private:
@@ -156,7 +123,6 @@ private:
 	std::string autoSelected;
 };
 
-Toggle Robot::vision(true);
 
 START_ROBOT_CLASS(Robot)
 

@@ -21,6 +21,7 @@
 #include <vector>
 #include <string>
 #include <math.h>
+#include <WPILib.h>
 
 using namespace std;
 namespace grip {
@@ -37,6 +38,7 @@ class GripPipeline {
 		void hslThreshold(cv::Mat &, double [], double [], double [], cv::Mat &);
 		void findContours(cv::Mat &, bool , std::vector<std::vector<cv::Point> > &);
 
+
 	public:
 		GripPipeline();
 		void Process(cv::Mat& source0);
@@ -44,15 +46,11 @@ class GripPipeline {
 		std::vector<std::vector<cv::Point> >* GetFindContoursOutput();
 		static bool compareContourArea(vector<cv::Point> &contour_1,vector<cv::Point> &contour_2 );
 
-		float getHeight(cv::Rect &rect);
-		float getWidth(cv::Rect &rect);
-		float boundRectArea (cv::Rect &rect);
-		float getRectRatio(cv::Rect &rect);
+
+
 };
 
 
 } // end namespace grip
-
-
 
 #endif /* SRC_GRIPPIPELINE_H_ */
