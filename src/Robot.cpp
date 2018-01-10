@@ -8,13 +8,61 @@
 #include <SmartDashboard/SmartDashboard.h>
 #include <Lib830.h>
 #include <WPIlib.h>
+#include "GripPipeline.h"
+#include <thread>
 
 class Robot: public frc::IterativeRobot {
 public:
+	static void CameraPeriodic() {
+		CameraServer *server;
+		grip::GripPipeline * pipeline;
+
+		pipeline = new grip::GripPipeline();
+		cs::UsbCamera camera;
+		cv::Mat image;
+		cv::Mat temp_image;
+		bool g_frame = false;
+
+		cs::CvSink sink;
+		cs::CvSource outputStream;
+
+		server = CameraServer::GetInstance();
+
+		camera = server->StartAutomaticCapture();
+		camera.SetResolution(320,240);
+
+		sink = server->GetVideo();
+		outputStream = server->PutVideo("Processed", 320, 240);
+
+		while(1) {
+			bool working = sink.GrabFrame(temp_image);
+			SmartDashboard::PutBoolean("working", working);
+
+			if (working) {
+				g_frame = true;
+				image = temp_image;
+			}
+			if (!g_frame) {
+				continue;
+			}
+			pipeline->Process(image);
+
+
+
+			//outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
+
+			outputStream.PutFrame(image);
+		}
+
+	}
+
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser);
+
+		std::thread visionThread(CameraPeriodic);
+		visionThread.detach();
 	}
 
 	/*
@@ -28,6 +76,7 @@ public:
 	 * if-else structure below with additional strings. If using the
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
+
 	void AutonomousInit() override {
 		autoSelected = chooser.GetSelected();
 		// std::string autoSelected = SmartDashboard::GetString("Auto Selector", autoNameDefault);
@@ -57,7 +106,7 @@ public:
 	}
 
 	void TestPeriodic() {
-		lw->Run();
+		//lw->Run();
 	}
 
 private:
