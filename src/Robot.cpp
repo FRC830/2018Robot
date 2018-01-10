@@ -10,11 +10,29 @@
 #include <WPIlib.h>
 
 class Robot: public frc::IterativeRobot {
+private:
+	frc::LiveWindow* lw = LiveWindow::GetInstance();
+	frc::SendableChooser<std::string> chooser;
+	const std::string autoNameDefault = "Default";
+	const std::string autoNameCustom = "My Auto";
+	std::string autoSelected;
+
 public:
+
+	static const int FL_PWM = 0;
+	static const int FR_PWM = 1;
+	static const int MFL_PWM = 2;
+	static const int MBL_PWM = 3;
+	static const int MFR_PWM = 4;
+	static const int MBL_PWM = 5;
+	static const int BACK_PWM = 6;
+
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser);
+
+
 	}
 
 	/*
@@ -60,12 +78,6 @@ public:
 		lw->Run();
 	}
 
-private:
-	frc::LiveWindow* lw = LiveWindow::GetInstance();
-	frc::SendableChooser<std::string> chooser;
-	const std::string autoNameDefault = "Default";
-	const std::string autoNameCustom = "My Auto";
-	std::string autoSelected;
 };
 
 START_ROBOT_CLASS(Robot)
