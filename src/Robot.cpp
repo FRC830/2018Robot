@@ -8,6 +8,7 @@
 #include <SmartDashboard/SmartDashboard.h>
 #include <Lib830.h>
 #include <WPIlib.h>
+#include <OmniDrive.h>
 
 class Robot: public frc::IterativeRobot {
 private:
@@ -24,14 +25,37 @@ public:
 	static const int MFL_PWM = 2;
 	static const int MBL_PWM = 3;
 	static const int MFR_PWM = 4;
-	static const int MBL_PWM = 5;
+	static const int MBR_PWM = 5;
 	static const int BACK_PWM = 6;
+
+	static const int ANLOG_GYRO = 0;
+
+	static const int TICKS_TO_ACCEL = 10;
+
+	OmniDrive *drive;
+	Lib830::GamepadF310 * pilot;\
+	frc::AnalogGyro *gyro;
 
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser);
 
+		gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
+
+		drive = new OmniDrive(
+				new VictorSP(FR_PWM),
+				new VictorSP(FL_PWM),
+				new VictorSP(MFL_PWM),
+				new VictorSP(MBL_PWM),
+				new VictorSP(MFR_PWM),
+				new VictorSP(MBR_PWM),
+				new VictorSP(BACK_PWM),
+				gyro
+			);
+		pilot = new Lib830::GamepadF310(0);
+		gyro->Calibrate();
+		gyro->Reset();
 
 	}
 
@@ -70,12 +94,29 @@ public:
 
 	}
 
-	void TeleopPeriodic() {
+	float prev_y_speed = 0;
+	float prev_x_speed = 0;
+	float prev_turn = 0;
+
+	void TeleopPeriodic() override {
+		float y_speed = Lib830::accel(prev_y_speed, pilot->LeftY(), TICKS_TO_ACCEL);
+		float x_speed = Lib830::accel(prev_x_speed, pilot->LeftX(), TICKS_TO_ACCEL);
+		float turn =  Lib830::accel(prev_turn, pilot->RightX(), TICKS_TO_ACCEL);
+
+		drive->drive(y_speed, x_speed, turn);
+
+		prev_y_speed = y_speed;
+		prev_x_speed = x_speed;
+		prev_turn = turn;
+
 
 	}
 
 	void TestPeriodic() {
-		lw->Run();
+		//lw->Run();
+	}
+	void DisabledPeriodic() {
+		drive->drive(0,0,0);
 	}
 
 };
