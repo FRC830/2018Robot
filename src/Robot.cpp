@@ -10,6 +10,8 @@
 #include <WPIlib.h>
 #include <OmniDrive.h>
 
+using namespace std;
+
 class Robot: public frc::IterativeRobot {
 private:
 	frc::LiveWindow* lw = LiveWindow::GetInstance();
@@ -20,19 +22,25 @@ private:
 
 public:
 
-	static const int FL_PWM = 0;
+	static const int FRONT_LEFT_PWM;
+	static const int BACK_LEFT_PWM;
+	static const int FRONT_RIGHT_PWM;
+	static const int BACK_RIGHT_PWM;
+	/*static const int FL_PWM = 0;
 	static const int FR_PWM = 1;
 	static const int MFL_PWM = 2;
 	static const int MBL_PWM = 3;
 	static const int MFR_PWM = 4;
 	static const int MBR_PWM = 5;
-	static const int BACK_PWM = 6;
+	static const int BACK_PWM = 6; */
 
 	static const int ANLOG_GYRO = 0;
 
 	static const int TICKS_TO_ACCEL = 10;
 
-	OmniDrive *drive;
+	//OmniDrive *drive;
+
+	RobotDrive *drive;
 	Lib830::GamepadF310 * pilot;\
 	frc::AnalogGyro *gyro;
 
@@ -43,7 +51,7 @@ public:
 
 		gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
 
-		drive = new OmniDrive(
+		/*drive = new OmniDrive(
 				new VictorSP(FR_PWM),
 				new VictorSP(FL_PWM),
 				new VictorSP(MFL_PWM),
@@ -52,7 +60,14 @@ public:
 				new VictorSP(MBR_PWM),
 				new VictorSP(BACK_PWM),
 				gyro
-			);
+			); */
+		drive = new RobotDrive (
+				new VictorSP(FRONT_LEFT_PWM),
+				new VictorSP(BACK_LEFT_PWM),
+				new VictorSP(FRONT_RIGHT_PWM),
+				new VictorSP(BACK_RIGHT_PWM)
+		);
+
 		pilot = new Lib830::GamepadF310(0);
 		gyro->Calibrate();
 		gyro->Reset();
@@ -80,6 +95,13 @@ public:
 		} else {
 			// Default Auto goes here
 		}
+
+		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
+		SmartDashboard::PutString("message", message);
+
+		char mes = message[0];
+		cout << "first character: " << mes << endl;
+
 	}
 
 	void AutonomousPeriodic() {
@@ -103,7 +125,7 @@ public:
 		float x_speed = Lib830::accel(prev_x_speed, pilot->LeftX(), TICKS_TO_ACCEL);
 		float turn =  Lib830::accel(prev_turn, pilot->RightX(), TICKS_TO_ACCEL);
 
-		drive->drive(y_speed, x_speed, turn);
+		drive->MecanumDrive_Cartesian(x_speed, y_speed, turn, gyro->GetAngle());
 
 		prev_y_speed = y_speed;
 		prev_x_speed = x_speed;
@@ -116,7 +138,7 @@ public:
 		//lw->Run();
 	}
 	void DisabledPeriodic() {
-		drive->drive(0,0,0);
+		drive->MecanumDrive_Cartesian(0,0,0);
 	}
 
 };
