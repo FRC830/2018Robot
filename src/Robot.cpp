@@ -151,13 +151,9 @@ public:
 	}
 
 	void TeleopPeriodic() override {
-		float leftY = value(pilot->LeftY());
-		float leftX = value(pilot->LeftX());
-		float rightX = value(pilot->RightX());
-
-		float y_speed = Lib830::accel(prev_y_speed, leftY, TICKS_TO_ACCEL);
-		float x_speed = Lib830::accel(prev_x_speed, leftX, TICKS_TO_ACCEL);
-		float turn =  Lib830::accel(prev_turn, rightX, TICKS_TO_ACCEL);
+		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
+		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
+		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
 		float gyro_read = 0;
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_A))){
@@ -173,11 +169,11 @@ public:
 
 		SmartDashboard::PutNumber("gyro read", gyro_read);
 		SmartDashboard::PutBoolean("field orident", field_orient);
-		SmartDashboard::PutNumber("Left y", leftY);
+		SmartDashboard::PutNumber("Left y", value(pilot->LeftY()));
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
-		//DigitalLED::Color cyan = {0, 0.4, 1};
-		led->Set(1,1,1);
+		DigitalLED::Color cyan = {0, 0.4, 1};
+		led->Set(cyan);
 	}
 
 	void TestPeriodic() {
@@ -185,6 +181,7 @@ public:
 	}
 	void DisabledPeriodic() {
 		drive->DriveCartesian(0,0,0);
+		led->Disable();
 	}
 
 };
