@@ -9,8 +9,10 @@
 #include <Lib830.h>
 #include <WPIlib.h>
 #include <OmniDrive.h>
+#include <input/Toggle.h>
 
 using namespace std;
+using namespace Lib830;
 
 class Robot: public frc::IterativeRobot {
 private:
@@ -22,10 +24,14 @@ private:
 
 public:
 
-	static const int FRONT_LEFT_PWM;
-	static const int BACK_LEFT_PWM;
-	static const int FRONT_RIGHT_PWM;
-	static const int BACK_RIGHT_PWM;
+	static const int FRONT_LEFT_PWM = 0;
+	static const int BACK_LEFT_PWM = 1;
+	static const int FRONT_RIGHT_PWM = 2;
+	static const int BACK_RIGHT_PWM = 3;
+
+	static const int RED_LED_DIO = 0;
+	static const int GREEN_LED_DIO = 1;
+	static const int BLUE_LED_DIO = 2;
 	/*static const int FL_PWM = 0;
 	static const int FR_PWM = 1;
 	static const int MFL_PWM = 2;
@@ -40,9 +46,18 @@ public:
 
 	//OmniDrive *drive;
 
-	RobotDrive *drive;
+	MecanumDrive *drive;
 	Lib830::GamepadF310 * pilot;\
 	frc::AnalogGyro *gyro;
+
+	VictorSP fl;
+	VictorSP bl;
+	VictorSP fr;
+	VictorSP br;
+
+	DigitalLED *led;
+
+	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM) {}
 
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
@@ -61,16 +76,20 @@ public:
 				new VictorSP(BACK_PWM),
 				gyro
 			); */
-		drive = new RobotDrive (
-				new VictorSP(FRONT_LEFT_PWM),
-				new VictorSP(BACK_LEFT_PWM),
-				new VictorSP(FRONT_RIGHT_PWM),
-				new VictorSP(BACK_RIGHT_PWM)
+
+
+		drive = new MecanumDrive (
+				fl,
+				bl,
+				fr,
+				br
 		);
 
 		pilot = new Lib830::GamepadF310(0);
 		gyro->Calibrate();
 		gyro->Reset();
+
+		led = new DigitalLED(DigitalOutput(RED_LED_DIO), DigitalOutput(GREEN_LED_DIO), DigitalOutput(BLUE_LED_DIO));
 
 	}
 
@@ -120,25 +139,52 @@ public:
 	float prev_x_speed = 0;
 	float prev_turn = 0;
 
-	void TeleopPeriodic() override {
-		float y_speed = Lib830::accel(prev_y_speed, pilot->LeftY(), TICKS_TO_ACCEL);
-		float x_speed = Lib830::accel(prev_x_speed, pilot->LeftX(), TICKS_TO_ACCEL);
-		float turn =  Lib830::accel(prev_turn, pilot->RightX(), TICKS_TO_ACCEL);
+	Toggle field_orient;
 
-		drive->MecanumDrive_Cartesian(x_speed, y_speed, turn, gyro->GetAngle());
+	float value(float input) {
+		if (fabs(input) < 0.13) {
+			return 0;
+		}
+		else {
+			return input;
+		}
+	}
+
+	void TeleopPeriodic() override {
+		float leftY = value(pilot->LeftY());
+		float leftX = value(pilot->LeftX());
+		float rightX = value(pilot->RightX());
+
+		float y_speed = Lib830::accel(prev_y_speed, leftY, TICKS_TO_ACCEL);
+		float x_speed = Lib830::accel(prev_x_speed, leftX, TICKS_TO_ACCEL);
+		float turn =  Lib830::accel(prev_turn, rightX, TICKS_TO_ACCEL);
+		float gyro_read = 0;
+
+		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_A))){
+			gyro_read = gyro->GetAngle();
+		}
+
+
+		drive->DriveCartesian(x_speed, y_speed, turn, gyro_read);
 
 		prev_y_speed = y_speed;
 		prev_x_speed = x_speed;
 		prev_turn = turn;
 
+		SmartDashboard::PutNumber("gyro read", gyro_read);
+		SmartDashboard::PutBoolean("field orident", field_orient);
+		SmartDashboard::PutNumber("Left y", leftY);
+		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
+		DigitalLED::Color cyan = (0, 0.4, 1);
+		led->Set(cyan);
 	}
 
 	void TestPeriodic() {
 		//lw->Run();
 	}
 	void DisabledPeriodic() {
-		drive->MecanumDrive_Cartesian(0,0,0);
+		drive->DriveCartesian(0,0,0);
 	}
 
 };
