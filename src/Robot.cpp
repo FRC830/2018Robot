@@ -89,7 +89,7 @@ public:
 		gyro->Calibrate();
 		gyro->Reset();
 
-		led = new DigitalLED(DigitalOutput(RED_LED_DIO), DigitalOutput(GREEN_LED_DIO), DigitalOutput(BLUE_LED_DIO));
+		led = new DigitalLED(new DigitalOutput(RED_LED_DIO), new DigitalOutput(GREEN_LED_DIO), new DigitalOutput(BLUE_LED_DIO));
 
 	}
 
@@ -176,8 +176,8 @@ public:
 		SmartDashboard::PutNumber("Left y", leftY);
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
-		DigitalLED::Color cyan = (0, 0.4, 1);
-		led->Set(cyan);
+		//DigitalLED::Color cyan = {0, 0.4, 1};
+		led->Set(1,1,1);
 	}
 
 	void TestPeriodic() {
