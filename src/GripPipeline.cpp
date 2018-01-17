@@ -28,9 +28,9 @@ void GripPipeline::Process(cv::Mat& source0){
 	//Step Find_Contours0:
 	//input
 	cv::Mat findContoursInput = hslThresholdOutput;
+
 	bool findContoursExternalOnly = false;  // default Boolean
 	findContours(findContoursInput, findContoursExternalOnly, this->findContoursOutput);
-
 
 	if (findContoursOutput.size() == 0) {
 		SmartDashboard::PutString("vision error", "no contours");
@@ -38,45 +38,60 @@ void GripPipeline::Process(cv::Mat& source0){
 	}
 
 	cv::Scalar color_1 = {0,255,0};
+	cv::Scalar color_2 {255,0,0};
 
-	//cv::drawContours(source0, findContoursOutput, -1, color_1, 5);
 
 	sort(findContoursOutput.begin(), findContoursOutput.end(), compareContourArea);
 
-	vector <cv::Rect> boundRect (findContoursOutput.size());
+	vector <cv::Rect> boundRect;
+
 
 	for (int i = 0; i < (int)findContoursOutput.size(); i++) {
-		boundRect[i] = cv::boundingRect(cv::Mat(findContoursOutput[i]));
-		float ratio = getRectRatio(boundRect[i]);
-		if (ratio > 9 || ratio < 4 ) {
-			boundRect.erase(boundRect.begin() + i);
+		cv::Rect temp_boundRect = cv::boundingRect(cv::Mat(findContoursOutput[i]));
+		float ratio = getRectRatio(temp_boundRect);
+		//float area = boundRectArea(temp_boundRect);
+		//might cause an issue
+		if ((ratio < 9 && ratio > 4)) {
+			boundRect.push_back(temp_boundRect);
 		}
-
 	}
-	if (boundRect.size() == 0) {
+	if (boundRect.size() < 2) {
 		SmartDashboard::PutString("vision error", "rectangles with wrong ratio");
 		return;
 	}
 
+
 	SmartDashboard::PutNumber("ratio" , getRectRatio(boundRect[0]));
 	SmartDashboard::PutNumber("ratio 2",  getRectRatio(boundRect[1]));
 
+	cout << "rec size " << boundRect.size() <<endl;
+
 	vector <float> rectRatio;
-	for (int i = 0; i < (int)boundRect.size()-1; i++) {
+	for (int i = 0; i < (int)(boundRect.size()-1); i++) {
 		float area_ratio = boundRectArea(boundRect[i])/boundRectArea(boundRect[i+1]);
-		if (area_ratio < 1) {
+		if (area_ratio < 1 && area_ratio != 0) {
 			area_ratio = 1/area_ratio;
 		}
 		rectRatio.push_back(area_ratio);
+		cout <<area_ratio <<endl;
 	}
 
-	auto smallest_ratio = min_element(rectRatio.begin(), rectRatio.end());
-	auto index = distance(rectRatio.begin(), smallest_ratio);
+
+	int index = distance(rectRatio.begin(), min_element(rectRatio.begin(), rectRatio.end()));
+
+	cout << "smallest: " << *min_element(rectRatio.begin(), rectRatio.end()) <<endl;
+	cout << "index :" << index <<endl;
+
+	vector <cv::Rect> finalboundRect;
+
+	finalboundRect.push_back(boundRect[index]);
+	finalboundRect.push_back(boundRect[index + 1]);
 
 
+	for (int i = 0; i < 2; i++) {
+		cv::rectangle(source0, finalboundRect[i].tl(), finalboundRect[i].br(), color_1, 5);
 
-
-	//cv::rectangle(source0, boundRect[i].tl(), boundRect[i].br(), color_1, 5);
+	}
 
 	SmartDashboard::PutString("vision error", "");
 
