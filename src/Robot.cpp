@@ -73,6 +73,11 @@ public:
 
 	VictorSP * test;
 
+	float StraifVisionCorrect(){
+		float midx = SmartDashboard::GetNumber("mid point x", 160);
+		return (midx-160)/-160;
+	}
+
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
@@ -126,6 +131,9 @@ public:
 	}
 
 	void TeleopPeriodic() {
+		if (pilot->ButtonState(GamepadF310::BUTTON_A)){
+			SmartDashboard::PutNumber("Straife speed", StraifVisionCorrect());
+		}
 
 		led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
 
@@ -148,7 +156,7 @@ private:
 	std::string autoSelected;
 };
 
-Toggle Robot::vision;
+Toggle Robot::vision(true);
 
 START_ROBOT_CLASS(Robot)
 
