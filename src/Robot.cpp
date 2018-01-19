@@ -8,11 +8,12 @@
 #include <SmartDashboard/SmartDashboard.h>
 #include <Lib830.h>
 #include <WPIlib.h>
-#include <OmniDrive.h>
-#include <input/Toggle.h>
+#include "GripPipeline.h"
+#include <thread>
 
-using namespace std;
 using namespace Lib830;
+using namespace std;
+
 
 class Robot: public frc::IterativeRobot {
 private:
@@ -23,7 +24,6 @@ private:
 	std::string autoSelected;
 
 public:
-
 	static const int FRONT_LEFT_PWM = 0;
 	static const int BACK_LEFT_PWM = 1;
 	static const int FRONT_RIGHT_PWM = 2;
@@ -59,6 +59,69 @@ public:
 
 	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM) {}
 
+	static Toggle vision;
+	static void CameraPeriodic() {
+		CameraServer *server;
+		grip::GripPipeline * pipeline;
+
+		pipeline = new grip::GripPipeline();
+		cs::UsbCamera camera;
+		cv::Mat image;
+		cv::Mat temp_image;
+		bool g_frame = false;
+
+		cs::CvSink sink;
+		cs::CvSource outputStream;
+
+		server = CameraServer::GetInstance();
+
+		camera = server->StartAutomaticCapture();
+		camera.SetResolution(320,240);
+
+		sink = server->GetVideo();
+		outputStream = server->PutVideo("Processed", 320, 240);
+
+		vision = true;
+		while(1) {
+			bool working = sink.GrabFrame(temp_image);
+			SmartDashboard::PutBoolean("working", working);
+
+			if (working) {
+				g_frame = true;
+				image = temp_image;
+			}
+			if (!g_frame) {
+				continue;
+			}
+			if (vision) {
+				pipeline->Process(image);
+			}
+
+
+			//outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
+
+			outputStream.PutFrame(image);
+		}
+
+	}
+
+	static const int DIO_RED = 0;
+	static const int DIO_GREEN = 1;
+	static const int DIO_BLUE = 2;
+
+	Lib830::DigitalLED *led;
+
+	Lib830::GamepadF310 *pilot;
+
+	static const int TEST_PWM = 0;
+
+	VictorSP * test;
+
+	float StraifVisionCorrect(){
+		float midx = SmartDashboard::GetNumber("mid point x", 160);
+		return (midx-160)/-160;
+	}
+
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
@@ -90,6 +153,13 @@ public:
 		gyro->Reset();
 
 		led = new DigitalLED(new DigitalOutput(RED_LED_DIO), new DigitalOutput(GREEN_LED_DIO), new DigitalOutput(BLUE_LED_DIO));
+		std::thread visionThread(CameraPeriodic);
+		visionThread.detach();
+
+		led = new DigitalLED( new DigitalOutput(DIO_RED), new DigitalOutput(DIO_GREEN), new DigitalOutput(DIO_BLUE));
+		pilot = new GamepadF310(0);
+
+		test = new VictorSP(TEST_PWM);
 
 	}
 
@@ -104,6 +174,7 @@ public:
 	 * if-else structure below with additional strings. If using the
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
+
 	void AutonomousInit() override {
 		autoSelected = chooser.GetSelected();
 		// std::string autoSelected = SmartDashboard::GetString("Auto Selector", autoNameDefault);
@@ -173,7 +244,15 @@ public:
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
 		DigitalLED::Color cyan = {0, 0.4, 1};
-		led->Set(cyan);
+		//led->Set(cyan);
+
+		if (pilot->ButtonState(GamepadF310::BUTTON_A)){
+			SmartDashboard::PutNumber("Straife speed", StraifVisionCorrect());
+		}
+
+		led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
+
+		test->Set(pilot->RightY());
 	}
 
 	void TestPeriodic() {
@@ -183,7 +262,13 @@ public:
 		drive->DriveCartesian(0,0,0);
 		led->Disable();
 	}
+	void RobotPeriodic() {
+		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
+	}
 
 };
 
+Toggle Robot::vision(true);
+
 START_ROBOT_CLASS(Robot)
+
