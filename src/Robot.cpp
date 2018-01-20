@@ -47,7 +47,7 @@ public:
 	//OmniDrive *drive;
 
 	MecanumDrive *drive;
-	Lib830::GamepadF310 * pilot;\
+	Lib830::GamepadF310 * pilot;
 	frc::AnalogGyro *gyro;
 
 	VictorSP fl;
@@ -55,7 +55,15 @@ public:
 	VictorSP fr;
 	VictorSP br;
 
-	DigitalLED *led;
+	static const int DIO_RED = 0;
+	static const int DIO_GREEN = 1;
+	static const int DIO_BLUE = 2;
+
+	Lib830::DigitalLED *led;
+
+	static const int TEST_PWM = 0;
+
+	VictorSP * test;
 
 	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM) {}
 
@@ -105,17 +113,7 @@ public:
 
 	}
 
-	static const int DIO_RED = 0;
-	static const int DIO_GREEN = 1;
-	static const int DIO_BLUE = 2;
 
-	Lib830::DigitalLED *led;
-
-	Lib830::GamepadF310 *pilot;
-
-	static const int TEST_PWM = 0;
-
-	VictorSP * test;
 
 	float StraifVisionCorrect(){
 		float midx = SmartDashboard::GetNumber("mid point x", 160);
@@ -227,7 +225,7 @@ public:
 		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
 		float gyro_read = 0;
 
-		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_A))){
+		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
 			gyro_read = gyro->GetAngle();
 		}
 
