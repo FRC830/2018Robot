@@ -37,7 +37,19 @@ class GripPipeline {
 		std::vector<std::vector<cv::Point> > findContoursOutput;
 		void hslThreshold(cv::Mat &, double [], double [], double [], cv::Mat &);
 		void findContours(cv::Mat &, bool , std::vector<std::vector<cv::Point> > &);
+		struct rectDimensions  {
+			rectDimensions(cv::Rect &rect);
+			float width;
+			float height;
+			float ratio;
+			float area;
+			cv::Rect rect;
+			bool operator< (const rectDimensions &other) {
+				return area < other.area;
+			}
+		};
 
+		bool compareRectangles(cv::Rect& x, cv::Rect& y);
 
 	public:
 		GripPipeline();

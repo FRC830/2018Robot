@@ -33,22 +33,42 @@ void GripPipeline::Process(cv::Mat& source0){
 
 	cv::Scalar color_1 = {0,255,0};
 	cv::Scalar color_2 {255,0,0};
+	cv::Scalar color_3 {0,0,0};
 
 
 	source0 = hslThresholdOutput;
 
-	/*Assignment: create program that can isolate a 5 by 8 inch rectangle, and find it's center point
-	 * helpful resources: the online opencv library, this year and last year's code
-	 * stackoverflow.com
-	 * i'll also help ya know, and alan and colin
-	 */
+	vector<rectDimensions> rectVect;
+	drawContours(source0, findContoursOutput, -1, color_1, 5);
+	for (int i = 0; i < (int)findContoursOutput.size(); i++){
+		cv::Rect temp = cv::boundingRect(findContoursOutput[i]);
+		rectDimensions rectDim(temp);
+		if (rectDim.ratio < 5 && rectDim.ratio > 3) {
+			rectVect.push_back(rectDim);
+		}
+	}
 
+
+	sort(rectVect.rbegin(), rectVect.rend());
+	cv::rectangle(source0, rectVect[0].rect.tl(), rectVect[0].rect.br(), color_2);
+	cv::Point midpoint = (rectVect[0].rect.tl()+rectVect[0].rect.br())/2;
+	cv:line(source0, midpoint, midpoint, color_3, 5);
 }
 
 /**
  * This method is a generated getter for the output of a HSL_Threshold.
  * @return Mat output from HSL_Threshold.
  */
+
+GripPipeline::rectDimensions::rectDimensions(cv::Rect& rect) : rect(rect) {
+	width = rect.br().x - rect.tl().x;
+	height = rect.tl().y - rect.br().y;
+	ratio = width/height;
+	area = width * height;
+}
+
+
+
 cv::Mat* GripPipeline::GetHslThresholdOutput(){
 	return &(this->hslThresholdOutput);
 }
