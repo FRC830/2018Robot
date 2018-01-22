@@ -30,22 +30,28 @@ void GripPipeline::Process(cv::Mat& source0){
 	bool findContoursExternalOnly = false;  // default Boolean
 	findContours(findContoursInput, findContoursExternalOnly, this->findContoursOutput);
 
+	if (findContoursOutput.size() == 0) {
+		return;
+	}
 
 	cv::Scalar color_1 = {0,255,0};
 	cv::Scalar color_2 {255,0,0};
 	cv::Scalar color_3 {0,0,0};
 
 
-	source0 = hslThresholdOutput;
-
 	vector<rectDimensions> rectVect;
-	drawContours(source0, findContoursOutput, -1, color_1, 5);
+	//drawContours(source0, findContoursOutput, -1, color_1, 5);
 	for (int i = 0; i < (int)findContoursOutput.size(); i++){
 		cv::Rect temp = cv::boundingRect(findContoursOutput[i]);
 		rectDimensions rectDim(temp);
-		if (rectDim.ratio < 5 && rectDim.ratio > 3) {
+		if (rectDim.ratio < 9 && rectDim.ratio > 6) {
 			rectVect.push_back(rectDim);
+			cout << "ratio: " << rectDim.ratio << endl;
+
 		}
+	}
+	if (rectVect.size() == 0) {
+		return;
 	}
 
 
@@ -61,8 +67,8 @@ void GripPipeline::Process(cv::Mat& source0){
  */
 
 GripPipeline::rectDimensions::rectDimensions(cv::Rect& rect) : rect(rect) {
-	width = rect.br().x - rect.tl().x;
-	height = rect.tl().y - rect.br().y;
+	width = fabs(rect.br().x - rect.tl().x);
+	height = fabs(rect.tl().y - rect.br().y);
 	ratio = width/height;
 	area = width * height;
 }
