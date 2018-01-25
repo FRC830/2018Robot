@@ -39,10 +39,7 @@ class GripPipeline {
 		void findContours(cv::Mat &, bool , std::vector<std::vector<cv::Point> > &);
 		struct rectDimensions  {
 			rectDimensions(cv::Rect &rect);
-			float width;
-			float height;
 			float ratio;
-			float area;
 			cv::Rect rect;
 			bool operator< (const rectDimensions &other) {
 				return area < other.area;

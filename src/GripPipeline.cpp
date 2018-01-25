@@ -67,10 +67,9 @@ void GripPipeline::Process(cv::Mat& source0){
  */
 
 GripPipeline::rectDimensions::rectDimensions(cv::Rect& rect) : rect(rect) {
-	width = fabs(rect.br().x - rect.tl().x);
-	height = fabs(rect.tl().y - rect.br().y);
+	float width = rect.width;
+	float height = rect.height;
 	ratio = width/height;
-	area = width * height;
 }
 
 
