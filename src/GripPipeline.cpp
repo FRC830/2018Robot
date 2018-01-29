@@ -21,10 +21,17 @@ GripPipeline::GripPipeline() {
 void GripPipeline::Process(cv::Mat& source0){
 	//Step HSL_Threshold0:
 	//input
+
+	/*double hue_min = SmartDashboard::GetNumber("hue min", 60);
+	double hue_max = SmartDashboard::GetNumber("hue max", 108);
+	double saturation_min = SmartDashboard::GetNumber("sat min", 131);
+	double saturation_max = SmartDashboard::GetNumber("sat max", 255);
+	double luminance_min = SmartDashboard::GetNumber("lum min", 140);
+	double luminance_max = SmartDashboard::GetNumber("lum max", 220);*/
 	cv::Mat hslThresholdInput = source0;
-	double hslThresholdHue[] = {0, 180};
-	double hslThresholdSaturation[] = {0, 255};
-	double hslThresholdLuminance[] = {218, 255.0};
+	double hslThresholdHue[] = {60, 108};
+	double hslThresholdSaturation[] = {131, 255};
+	double hslThresholdLuminance[] = {140, 220};
 	hslThreshold(hslThresholdInput, hslThresholdHue, hslThresholdSaturation, hslThresholdLuminance, this->hslThresholdOutput);
 	//Step Find_Contours0:
 	//input
@@ -33,6 +40,8 @@ void GripPipeline::Process(cv::Mat& source0){
 	bool findContoursExternalOnly = false;  // default Boolean
 	findContours(findContoursInput, findContoursExternalOnly, this->findContoursOutput);
 
+//	source0 = hslThresholdOutput;
+//	return;
 	if (findContoursOutput.size() == 0) {
 		SmartDashboard::PutString("vision error", "no contours");
 		SmartDashboard::PutNumber("mid point x", 160);
@@ -51,12 +60,16 @@ void GripPipeline::Process(cv::Mat& source0){
 	for (int i = 0; i < (int)findContoursOutput.size(); i++) {
 		cv::Rect temp_boundRect = cv::boundingRect(cv::Mat(findContoursOutput[i]));
 		float ratio = getRectRatio(temp_boundRect);
-		//float area = boundRectArea(temp_boundRect);
+		float area = temp_boundRect.area();
 		//might cause an issue
-		if ((ratio < 9 && ratio > 4)) {
+		if ((ratio < 10 && ratio > 2) && area > 100) {
 			boundRect.push_back(temp_boundRect);
 		}
 	}
+//	for (int i = 0; i < (int) boundRect.size(); i++) {
+//		cv::rectangle(source0, boundRect[i].tl(), boundRect[i].br(), color_1,1);
+//	}
+//	return;
 	if (boundRect.size() < 2) {
 		SmartDashboard::PutString("vision error", "rectangles with wrong ratio");
 		SmartDashboard::PutNumber("mid point x", 160);
@@ -104,7 +117,7 @@ void GripPipeline::Process(cv::Mat& source0){
 
 	}
 
-	cv::line(source0, rect_1.tl(), rect_2.br(), color_2,5);
+	//cv::line(source0, rect_1.tl(), rect_2.br(), color_2,5);
 	cv::Scalar color_3 {100,100,255};
 	cv::Point mid_point ((rect_1.tl() + rect_2.br()) / 2);
 

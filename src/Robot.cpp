@@ -17,11 +17,13 @@ using namespace std;
 
 class Robot: public frc::IterativeRobot {
 private:
-	frc::LiveWindow* lw = LiveWindow::GetInstance();
+	/*frc::LiveWindow* lw = LiveWindow::GetInstance();
 	frc::SendableChooser<std::string> chooser;
 	const std::string autoNameDefault = "Default";
 	const std::string autoNameCustom = "My Auto";
-	std::string autoSelected;
+	std::string autoSelected; */
+
+	enum AutoMode {NOTHING, CENTER_RIGHT, CENTER_LEFT};
 
 public:
 	static const int FRONT_LEFT_PWM = 0;
@@ -54,7 +56,7 @@ public:
 	VictorSP bl;
 	VictorSP fr;
 	VictorSP br;
-
+	Timer timer;
 	static const int DIO_RED = 0;
 	static const int DIO_GREEN = 1;
 	static const int DIO_BLUE = 2;
@@ -64,6 +66,10 @@ public:
 	static const int TEST_PWM = 0;
 
 	VictorSP * test;
+
+	SendableChooser<AutoMode*> *chooser;
+
+
 
 	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM) {}
 
@@ -85,15 +91,16 @@ public:
 
 		camera = server->StartAutomaticCapture();
 		camera.SetResolution(320,240);
-
 		sink = server->GetVideo();
 		outputStream = server->PutVideo("Processed", 320, 240);
 
 		vision = true;
+		bool setExposure = true;
+
 		while(1) {
+
 			bool working = sink.GrabFrame(temp_image);
 			SmartDashboard::PutBoolean("working", working);
-
 			if (working) {
 				g_frame = true;
 				image = temp_image;
@@ -102,7 +109,18 @@ public:
 				continue;
 			}
 			if (vision) {
+				if (setExposure) {
+					camera.SetExposureManual(30);
+					setExposure = false;
+				}
 				pipeline->Process(image);
+			}
+			else {
+				if (!setExposure) {
+					camera.SetExposureAuto();
+					setExposure = true;
+				}
+
 			}
 
 
@@ -121,9 +139,9 @@ public:
 	}
 
 	void RobotInit() {
-		chooser.AddDefault(autoNameDefault, autoNameDefault);
+		/*chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
-		frc::SmartDashboard::PutData("Auto Modes", &chooser);
+		frc::SmartDashboard::PutData("Auto Modes", &chooser); */
 
 		gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
 
@@ -150,15 +168,29 @@ public:
 		gyro->Calibrate();
 		gyro->Reset();
 
+		/*SmartDashboard::PutNumber("hue min", 60);
+		SmartDashboard::PutNumber("hue max", 108);
+		SmartDashboard::PutNumber("sat min", 131);
+		SmartDashboard::PutNumber("sat max", 255);
+		SmartDashboard::PutNumber("lum min", 140);
+		SmartDashboard::PutNumber("lum max", 220);*/
+
 		led = new DigitalLED(new DigitalOutput(RED_LED_DIO), new DigitalOutput(GREEN_LED_DIO), new DigitalOutput(BLUE_LED_DIO));
 		std::thread visionThread(CameraPeriodic);
 		visionThread.detach();
 
-		led = new DigitalLED( new DigitalOutput(DIO_RED), new DigitalOutput(DIO_GREEN), new DigitalOutput(DIO_BLUE));
+		//led = new DigitalLED( new DigitalOutput(DIO_RED), new DigitalOutput(DIO_GREEN), new DigitalOutput(DIO_BLUE));
 		pilot = new GamepadF310(0);
 
 		test = new VictorSP(TEST_PWM);
 
+		chooser = new SendableChooser<AutoMode*>;
+
+		chooser->AddObject("Center left", new AutoMode(CENTER_LEFT));
+		chooser->AddObject("Center right", new AutoMode(CENTER_RIGHT));
+		chooser->AddDefault("Nothing", new AutoMode(NOTHING));
+
+		SmartDashboard::PutData(chooser);
 	}
 
 	/*
@@ -174,7 +206,8 @@ public:
 	 */
 
 	void AutonomousInit() override {
-		autoSelected = chooser.GetSelected();
+
+		/*autoSelected = chooser.GetSelected();
 		// std::string autoSelected = SmartDashboard::GetString("Auto Selector", autoNameDefault);
 		std::cout << "Auto selected: " << autoSelected << std::endl;
 
@@ -182,22 +215,35 @@ public:
 			// Custom Auto goes here
 		} else {
 			// Default Auto goes here
-		}
+		}*/
 
+
+	}
+
+	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
 		SmartDashboard::PutString("message", message);
 
 		char mes = message[0];
 		cout << "first character: " << mes << endl;
 
-	}
-
-	void AutonomousPeriodic() {
-		if (autoSelected == autoNameCustom) {
-			// Custom Auto goes here
-		} else {
-			// Default Auto goes here
+		AutoMode mode = NOTHING;
+		if (chooser->GetSelected()) {
+			mode = *chooser->GetSelected();
 		}
+
+		if (mode == CENTER_LEFT) {
+			cout << "center left" <<endl;
+		}
+		else {
+			cout << "yikes" <<endl;
+		}
+
+//		if (/*autoSelected == autoNameCustom*/) {
+//			// Custom Auto goes here
+//		} else {
+//			// Default Auto goes here
+//		}
 	}
 
 	void TeleopInit() {
@@ -248,7 +294,8 @@ public:
 			SmartDashboard::PutNumber("Straife speed", StraifVisionCorrect());
 		}
 
-		led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
+		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
+
 
 		test->Set(pilot->RightY());
 	}
@@ -258,10 +305,16 @@ public:
 	}
 	void DisabledPeriodic() {
 		drive->DriveCartesian(0,0,0);
-		led->Disable();
+		//led->Disable();
+		//led->Alternate({1,0.7,0}, {0,0,1});
+
+
 	}
 	void RobotPeriodic() {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
+		led->Set(0,1,0);
+
+
 	}
 
 };
