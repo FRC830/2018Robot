@@ -23,7 +23,7 @@ private:
 	const std::string autoNameCustom = "My Auto";
 	std::string autoSelected; */
 
-	enum AutoMode {NOTHING, CENTER_RIGHT, CENTER_LEFT};
+	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
 
 public:
 	static const int FRONT_LEFT_PWM = 0;
@@ -94,7 +94,6 @@ public:
 		sink = server->GetVideo();
 		outputStream = server->PutVideo("Processed", 320, 240);
 
-		vision = true;
 		bool setExposure = true;
 
 		while(1) {
@@ -186,8 +185,9 @@ public:
 
 		chooser = new SendableChooser<AutoMode*>;
 
-		chooser->AddObject("Center left", new AutoMode(CENTER_LEFT));
-		chooser->AddObject("Center right", new AutoMode(CENTER_RIGHT));
+		chooser->AddObject("Center left", new AutoMode(LEFT));
+		chooser->AddObject("Center right", new AutoMode(RIGHT));
+		chooser->AddObject("Center right", new AutoMode(CENTER));
 		chooser->AddDefault("Nothing", new AutoMode(NOTHING));
 
 		SmartDashboard::PutData(chooser);
@@ -216,14 +216,14 @@ public:
 		} else {
 			// Default Auto goes here
 		}*/
-
+		timer.Reset();
+		timer.Start();
 
 	}
 
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
 		SmartDashboard::PutString("message", message);
-
 		char mes = message[0];
 		cout << "first character: " << mes << endl;
 
@@ -232,22 +232,26 @@ public:
 			mode = *chooser->GetSelected();
 		}
 
-		if (mode == CENTER_LEFT) {
-			cout << "center left" <<endl;
+		float time = timer.Get();
+		float angle = gyro->GetAngle();
+		if (time < 2) {
+			drive->DriveCartesian(0,0.5,0,angle);
 		}
 		else {
-			cout << "yikes" <<endl;
-		}
+			switch(mode) {
+			case CENTER:
+				if (mes == 'L') {
 
-//		if (/*autoSelected == autoNameCustom*/) {
-//			// Custom Auto goes here
-//		} else {
-//			// Default Auto goes here
-//		}
+				}
+
+
+
+			}
+		}
 	}
 
 	void TeleopInit() {
-
+		vision.Set(false);
 	}
 
 	float prev_y_speed = 0;
@@ -313,6 +317,7 @@ public:
 	void RobotPeriodic() {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
 		led->Set(0,1,0);
+		cout << "vision correct: " << vision << endl;
 
 
 	}
