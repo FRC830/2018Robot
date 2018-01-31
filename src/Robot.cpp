@@ -231,18 +231,19 @@ public:
 	}
 
 	float getXSpeed (bool &acquired_once, float target_speed, float default_speed) {
-		if (target_speed && !acquired_once) {
-			acquired_once = true;
+		if (target_speed) {
+			if(!acquired_once) {
+				acquired_once = true;
+			}
 			return target_speed;
 		}
-		else if (target_speed && acquired_once) {
-			return target_speed;
-		}
-		else if (!target_speed && acquired_once) {
-			return 0;
-		}
-		else if (!target_speed && !acquired_once) {
-			return default_speed;
+		else {
+			if (acquired_once) {
+				return 0;
+			}
+			else {
+				return default_speed;
+			}
 		}
 	}
 
@@ -262,19 +263,17 @@ public:
 
 		float x_speed = 0;
 		float y_speed = 0;
-		float rot = 0;
-		float angle = 0;
+		float angle = gyro->GetAngle();
+		float rot = angle/-60;
 
 
 		float time = timer.Get();
-		float temp_angle = gyro->GetAngle();
+
 		if (time < 2) {
 			y_speed = 0.5;
-			angle = temp_angle;
 		}
 
 		else if (time > 2 && time < 8) {
-			angle = temp_angle;
 			y_speed = 0.3;
 			if (acquired) {
 				y_speed = 0.5;
@@ -307,6 +306,7 @@ public:
 			default:
 				x_speed = 0;
 				y_speed = 0;
+				rot = 0;
 				break;
 			}
 		}
@@ -314,7 +314,7 @@ public:
 		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
-		drive->DriveCartesian(f_x_speed, f_y_speed, temp_angle/-60, angle);
+		drive->DriveCartesian(f_x_speed, f_y_speed, rot, angle);
 
 		SmartDashboard::PutNumber("x speed", f_x_speed);
 		SmartDashboard::PutNumber("y speed", f_y_speed);
@@ -388,13 +388,13 @@ public:
 
 
 	}
-#define PI 3.141592
+//#define PI 3.141592
 
 	void RobotPeriodic() {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
 		//led->Set(0,1,0);
-		DigitalLED::Color cyan = {0, 0.4, 1};
-		float time = timer.Get();
+		//DigitalLED::Color cyan = {0, 0.4, 1};
+		/*float time = timer.Get();
 
 		float red =( 0.5*sin(time *(PI/5))) + 0.5;
 		float green = (0.5*sin((time *(PI/5))- ((2*PI)/3))) + 0.5;
@@ -405,7 +405,8 @@ public:
 		cout << "red: " << red <<endl;
 
 
-		led->Set(red, green, blue);
+		led->Set(red, green, blue);*/
+		led->RainbowFade(10);
 		//cout << "vision correct: " << vision << endl;
 
 
