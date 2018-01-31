@@ -40,6 +40,7 @@ class GripPipeline {
 	public:
 		GripPipeline();
 		void Process(cv::Mat& source0);
+		void EndProcess(float mid, string vision_error);
 		cv::Mat* GetHslThresholdOutput();
 		std::vector<std::vector<cv::Point> >* GetFindContoursOutput();
 		static bool compareContourArea(vector<cv::Point> &contour_1,vector<cv::Point> &contour_2 );

@@ -71,8 +71,7 @@ void GripPipeline::Process(cv::Mat& source0){
 //	}
 //	return;
 	if (boundRect.size() < 2) {
-		SmartDashboard::PutString("vision error", "rectangles with wrong ratio");
-		SmartDashboard::PutNumber("mid point x", 160);
+		EndProcess(160,"rectangles with wrong ratio" );
 		return;
 	}
 
@@ -125,8 +124,7 @@ void GripPipeline::Process(cv::Mat& source0){
 
 	cv::line(source0, cv::Point(160,0), cv::Point(160,240), {0,255,255}, 3 );
 
-	SmartDashboard::PutNumber("mid point x", mid_point.x);
-	SmartDashboard::PutString("vision error", "");
+	EndProcess(mid_point.x, "");
 
 }
 
@@ -193,6 +191,11 @@ std::vector<std::vector<cv::Point> >* GripPipeline::GetFindContoursOutput(){
 	}
 	float GripPipeline::getRectRatio(cv::Rect &rect) {
 		return getHeight(rect)/getWidth(rect);
+	}
+
+	void GripPipeline::EndProcess(float mid, string vision_error) {
+		SmartDashboard::PutString("vision error", vision_error);
+		SmartDashboard::PutNumber("mid point x", mid);
 	}
 
 

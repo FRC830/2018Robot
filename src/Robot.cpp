@@ -10,6 +10,7 @@
 #include <WPIlib.h>
 #include "GripPipeline.h"
 #include <thread>
+#include <cmath>
 
 using namespace Lib830;
 using namespace std;
@@ -132,9 +133,9 @@ public:
 
 
 
-	float StraifVisionCorrect(){
+	float StrafeVisionCorrect(){
 		float midx = SmartDashboard::GetNumber("mid point x", 160);
-		return (midx-160)/-160;
+		return (midx-160)/260;
 	}
 
 	void RobotInit() {
@@ -185,12 +186,15 @@ public:
 
 		chooser = new SendableChooser<AutoMode*>;
 
-		chooser->AddObject("Center left", new AutoMode(LEFT));
-		chooser->AddObject("Center right", new AutoMode(RIGHT));
-		chooser->AddObject("Center right", new AutoMode(CENTER));
+		chooser->AddObject("Left", new AutoMode(LEFT));
+		chooser->AddObject("Right", new AutoMode(RIGHT));
+		chooser->AddObject("Center", new AutoMode(CENTER));
 		chooser->AddDefault("Nothing", new AutoMode(NOTHING));
 
 		SmartDashboard::PutData(chooser);
+
+		timer.Reset();
+		timer.Start();
 	}
 
 	/*
@@ -204,6 +208,7 @@ public:
 	 * if-else structure below with additional strings. If using the
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
+	bool acquired = false;
 
 	void AutonomousInit() override {
 
@@ -219,7 +224,30 @@ public:
 		timer.Reset();
 		timer.Start();
 
+		gyro->Reset();
+		acquired = false;
+		vision = true;
+
 	}
+
+	float getXSpeed (bool &acquired_once, float target_speed, float default_speed) {
+		if (target_speed && !acquired_once) {
+			acquired_once = true;
+			return target_speed;
+		}
+		else if (target_speed && acquired_once) {
+			return target_speed;
+		}
+		else if (!target_speed && acquired_once) {
+			return 0;
+		}
+		else if (!target_speed && !acquired_once) {
+			return default_speed;
+		}
+	}
+
+	float prev_y_speed = 0;
+	float prev_x_speed = 0;
 
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
@@ -232,30 +260,78 @@ public:
 			mode = *chooser->GetSelected();
 		}
 
+		float x_speed = 0;
+		float y_speed = 0;
+		float rot = 0;
+		float angle = 0;
+
+
 		float time = timer.Get();
-		float angle = gyro->GetAngle();
+		float temp_angle = gyro->GetAngle();
 		if (time < 2) {
-			drive->DriveCartesian(0,0.5,0,angle);
+			y_speed = 0.5;
+			angle = temp_angle;
 		}
-		else {
+
+		else if (time > 2 && time < 8) {
+			angle = temp_angle;
+			y_speed = 0.3;
+			if (acquired) {
+				y_speed = 0.5;
+			}
 			switch(mode) {
 			case CENTER:
 				if (mes == 'L') {
-
+					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), -0.3);
 				}
-
-
-
+				else if (mes == 'R') {
+					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), 0.3);
+				}
+				break;
+			case RIGHT:
+				if (mes == 'L') {
+					x_speed = 0;
+				}
+				else if (mes == 'R') {
+					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), 0);
+				}
+				break;
+			case LEFT:
+				if (mes == 'L') {
+					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), 0.2);
+				}
+				else if (mes == 'R') {
+					x_speed = 0;
+				}
+				break;
+			default:
+				x_speed = 0;
+				y_speed = 0;
+				break;
 			}
 		}
+
+		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
+		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
+
+		drive->DriveCartesian(f_x_speed, f_y_speed, temp_angle/-60, angle);
+
+		SmartDashboard::PutNumber("x speed", f_x_speed);
+		SmartDashboard::PutNumber("y speed", f_y_speed);
+		SmartDashboard::PutNumber("rot", rot);
+		SmartDashboard::PutNumber("angle", angle);
+		SmartDashboard::PutBoolean("acquired", acquired);
+
+		prev_x_speed = f_x_speed;
+		prev_y_speed = f_y_speed;
+
 	}
 
 	void TeleopInit() {
-		vision.Set(false);
+		vision = false;
 	}
 
-	float prev_y_speed = 0;
-	float prev_x_speed = 0;
+
 	float prev_turn = 0;
 
 	Toggle field_orient;
@@ -291,11 +367,9 @@ public:
 		SmartDashboard::PutNumber("Left y", value(pilot->LeftY()));
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
-		DigitalLED::Color cyan = {0, 0.4, 1};
-		//led->Set(cyan);
 
 		if (pilot->ButtonState(GamepadF310::BUTTON_A)){
-			SmartDashboard::PutNumber("Straife speed", StraifVisionCorrect());
+			SmartDashboard::PutNumber("Strafe speed", StrafeVisionCorrect());
 		}
 
 		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
@@ -314,10 +388,25 @@ public:
 
 
 	}
+#define PI 3.141592
+
 	void RobotPeriodic() {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
-		led->Set(0,1,0);
-		cout << "vision correct: " << vision << endl;
+		//led->Set(0,1,0);
+		DigitalLED::Color cyan = {0, 0.4, 1};
+		float time = timer.Get();
+
+		float red =( 0.5*sin(time *(PI/5))) + 0.5;
+		float green = (0.5*sin((time *(PI/5))- ((2*PI)/3))) + 0.5;
+		float blue = (0.5*sin((time *(PI/5))- ((4*PI)/3))) +0.5;
+
+		cout << "blue: " << blue <<endl;
+		cout << "green: " << green <<endl;
+		cout << "red: " << red <<endl;
+
+
+		led->Set(red, green, blue);
+		//cout << "vision correct: " << vision << endl;
 
 
 	}
