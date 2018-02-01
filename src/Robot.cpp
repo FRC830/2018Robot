@@ -64,11 +64,15 @@ public:
 
 	Lib830::DigitalLED *led;
 
-	static const int TEST_PWM = 0;
+	static const int TEST_PWM = 5;
 
 	VictorSP * test;
 
 	SendableChooser<AutoMode*> *chooser;
+
+	AnalogPotentiometer *pot;
+	PIDController *pid;
+
 
 
 
@@ -195,6 +199,14 @@ public:
 
 		timer.Reset();
 		timer.Start();
+
+		pot = new AnalogPotentiometer(1, 270, -135);
+		pid = new PIDController(6.0f, 2, 0, pot, test);
+		pid->SetInputRange(-135,135);
+		pid->SetOutputRange(-1.0, 1.0);
+		pid->SetAbsoluteTolerance(5);
+		pid->Enable();
+
 	}
 
 	/*
@@ -375,7 +387,22 @@ public:
 		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
 
 
-		test->Set(pilot->RightY());
+		//test->Set(pilot->RightY());
+
+		up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
+		down.toggle(pilot->ButtonState(GamepadF310::BUTTON_Y));
+		vector<float> setPoints = {0, 31.5, -90.1, 23.6, 20.0};
+
+
+		armMove(up, down, pos);
+
+		pid->SetSetpoint(setPoints[pos]);
+
+		SmartDashboard::PutNumber("pos", pos);
+		SmartDashboard::PutNumber("potentiometer", pot->Get());
+		SmartDashboard::PutNumber("set point", setPoints[pos]);
+		SmartDashboard::PutNumber("test speed", test->Get());
+
 	}
 
 	void TestPeriodic() {
@@ -390,24 +417,35 @@ public:
 	}
 //#define PI 3.141592
 
+	int pos = 0;
+	Toggle up;
+	Toggle down;
+
+	void armMove(Toggle &up, Toggle &down, int &position) {
+		if (up) {
+			if (position < 4) {
+				position++;
+			}
+			up = false;
+		}
+		else if (down) {
+			if (position > 0) {
+				position--;
+			}
+			down = false;
+		}
+	}
+
 	void RobotPeriodic() {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
 		//led->Set(0,1,0);
 		//DigitalLED::Color cyan = {0, 0.4, 1};
-		/*float time = timer.Get();
 
-		float red =( 0.5*sin(time *(PI/5))) + 0.5;
-		float green = (0.5*sin((time *(PI/5))- ((2*PI)/3))) + 0.5;
-		float blue = (0.5*sin((time *(PI/5))- ((4*PI)/3))) +0.5;
-
-		cout << "blue: " << blue <<endl;
-		cout << "green: " << green <<endl;
-		cout << "red: " << red <<endl;
-
-
-		led->Set(red, green, blue);*/
 		led->RainbowFade(10);
 		//cout << "vision correct: " << vision << endl;
+
+		//up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
+		//down.toggle(pilot->ButtonState(GamepadF310::BUTTON_X));
 
 
 	}
