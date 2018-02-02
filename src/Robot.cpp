@@ -11,6 +11,7 @@
 #include "GripPipeline.h"
 #include <thread>
 #include <cmath>
+#include "Arm.h"
 
 using namespace Lib830;
 using namespace std;
@@ -35,13 +36,6 @@ public:
 	static const int RED_LED_DIO = 0;
 	static const int GREEN_LED_DIO = 1;
 	static const int BLUE_LED_DIO = 2;
-	/*static const int FL_PWM = 0;
-	static const int FR_PWM = 1;
-	static const int MFL_PWM = 2;
-	static const int MBL_PWM = 3;
-	static const int MFR_PWM = 4;
-	static const int MBR_PWM = 5;
-	static const int BACK_PWM = 6; */
 
 	static const int ANLOG_GYRO = 0;
 
@@ -70,8 +64,10 @@ public:
 
 	SendableChooser<AutoMode*> *chooser;
 
-	AnalogPotentiometer *pot;
-	PIDController *pid;
+	//AnalogPotentiometer *pot;
+	//PIDController *pid;
+
+	Arm *arm;
 
 
 
@@ -149,18 +145,6 @@ public:
 
 		gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
 
-		/*drive = new OmniDrive(
-				new VictorSP(FR_PWM),
-				new VictorSP(FL_PWM),
-				new VictorSP(MFL_PWM),
-				new VictorSP(MBL_PWM),
-				new VictorSP(MFR_PWM),
-				new VictorSP(MBR_PWM),
-				new VictorSP(BACK_PWM),
-				gyro
-			); */
-
-
 		drive = new MecanumDrive (
 				fl,
 				bl,
@@ -186,7 +170,7 @@ public:
 		//led = new DigitalLED( new DigitalOutput(DIO_RED), new DigitalOutput(DIO_GREEN), new DigitalOutput(DIO_BLUE));
 		pilot = new GamepadF310(0);
 
-		test = new VictorSP(TEST_PWM);
+		//test = new VictorSP(TEST_PWM);
 
 		chooser = new SendableChooser<AutoMode*>;
 
@@ -200,12 +184,21 @@ public:
 		timer.Reset();
 		timer.Start();
 
-		pot = new AnalogPotentiometer(1, 270, -135);
-		pid = new PIDController(6.0f, 2, 0, pot, test);
+		/*pot = new AnalogPotentiometer(1, 270, -135);
+
+
+		SmartDashboard::PutNumber("p",0.1);
+		SmartDashboard::PutNumber("i",0);
+		SmartDashboard::PutNumber("d",0);
+
+		pid = new PIDController(0.1, 0, 0, pot, test);
 		pid->SetInputRange(-135,135);
-		pid->SetOutputRange(-1.0, 1.0);
+		pid->SetOutputRange(-0.3, 0.3);
 		pid->SetAbsoluteTolerance(5);
-		pid->Enable();
+		pid->Enable();8*/
+
+		arm = new Arm(new VictorSP(TEST_PWM), new AnalogPotentiometer(1, 270, -135));
+
 
 	}
 
@@ -224,15 +217,6 @@ public:
 
 	void AutonomousInit() override {
 
-		/*autoSelected = chooser.GetSelected();
-		// std::string autoSelected = SmartDashboard::GetString("Auto Selector", autoNameDefault);
-		std::cout << "Auto selected: " << autoSelected << std::endl;
-
-		if (autoSelected == autoNameCustom) {
-			// Custom Auto goes here
-		} else {
-			// Default Auto goes here
-		}*/
 		timer.Reset();
 		timer.Start();
 
@@ -341,6 +325,11 @@ public:
 
 	void TeleopInit() {
 		vision = false;
+		double p = SmartDashboard::GetNumber("p", 0.1);
+		double i = SmartDashboard::GetNumber("i", 0);
+		double d =SmartDashboard::GetNumber("d", 0);
+
+		//pid->SetPID(p,i,d);
 	}
 
 
@@ -389,19 +378,23 @@ public:
 
 		//test->Set(pilot->RightY());
 
-		up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
+		/*up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
 		down.toggle(pilot->ButtonState(GamepadF310::BUTTON_Y));
 		vector<float> setPoints = {0, 31.5, -90.1, 23.6, 20.0};
 
 
-		armMove(up, down, pos);
+		armMove(up, down, pos); */
 
-		pid->SetSetpoint(setPoints[pos]);
+		arm->update(pilot->ButtonState(GamepadF310::BUTTON_A),pilot->ButtonState(GamepadF310::BUTTON_Y));
 
-		SmartDashboard::PutNumber("pos", pos);
-		SmartDashboard::PutNumber("potentiometer", pot->Get());
-		SmartDashboard::PutNumber("set point", setPoints[pos]);
-		SmartDashboard::PutNumber("test speed", test->Get());
+		//pid->SetSetpoint(setPoints[pos]);
+
+		//SmartDashboard::PutNumber("pid output", pid->Get());
+
+		//SmartDashboard::PutNumber("pos", pos);
+		//SmartDashboard::PutNumber("potentiometer", pot->Get());
+		//SmartDashboard::PutNumber("set point", setPoints[pos]);
+		//SmartDashboard::PutNumber("test speed", test->Get());
 
 	}
 
