@@ -45,6 +45,8 @@ public:
 
 	MecanumDrive *drive;
 	Lib830::GamepadF310 * pilot;
+	Lib830::GamepadF310 * copilot;
+
 	frc::AnalogGyro *gyro;
 
 	VictorSP fl;
@@ -153,6 +155,8 @@ public:
 		);
 
 		pilot = new Lib830::GamepadF310(0);
+		copilot = new Lib830::GamepadF310(1);
+
 		gyro->Calibrate();
 		gyro->Reset();
 
@@ -373,19 +377,28 @@ public:
 			SmartDashboard::PutNumber("Strafe speed", StrafeVisionCorrect());
 		}
 
+
+		if (value(copilot->LeftY())) {
+			arm->manualPosition(value(copilot->LeftY()));
+		}
+		else {
+			up.toggle(copilot->LeftTrigger());
+			down.toggle(copilot->RightTrigger());
+
+			arm->teleopArmPosition(up, down);
+		}
+
+		arm->armMoveUpdate();
+
 		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
 
 
 		//test->Set(pilot->RightY());
 
-		/*up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
-		down.toggle(pilot->ButtonState(GamepadF310::BUTTON_Y));
-		vector<float> setPoints = {0, 31.5, -90.1, 23.6, 20.0};
+		/*vector<float> setPoints = {0, 31.5, -90.1, 23.6, 20.0};
 
 
 		armMove(up, down, pos); */
-
-		arm->update(pilot->ButtonState(GamepadF310::BUTTON_A),pilot->ButtonState(GamepadF310::BUTTON_Y));
 
 		//pid->SetSetpoint(setPoints[pos]);
 

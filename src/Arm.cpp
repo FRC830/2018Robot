@@ -19,39 +19,52 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 	i = 0;
 	d = 0;
 	pid->SetPID(p,i,d);
+	setpoint = DOWN;
 }
 
-void Arm::armPosition(Toggle &up, Toggle &down, int &position) {
+void Arm::toDown() {
+	pos = DOWN;
+}
+void Arm::toSwitch() {
+	pos = SWITCH;
+}
+void Arm::toScale() {
+	pos = SCALE_MID;
+}
+
+void Arm::teleopArmPosition(Toggle &button_up, Toggle &button_down) {
+	up = button_up;
+	down = button_down;
 	if (up) {
-		if (position < 4) {
-			position++;
+		if (pos < 5) {
+			pos++;
 		}
-		up = false;
+		button_up = false;
 	}
 	else if (down) {
-		if (position > 0) {
-			position--;
+		if (pos > 0) {
+			pos--;
 		}
-		down = false;
+		button_down = false;
 	}
 }
 
-void Arm::armMove(double position) {
-	pid->SetSetpoint(position);
-}
-
-void Arm::update(bool button_up, bool button_down) {
-	up.toggle(button_up);
-	down.toggle(button_down);
-
-	armPosition(up, down, pos);
-	armMove(setPoints[pos]);
-
+void Arm::manualPosition(float manual_pos) {
+	manual_pos *= 135; //to change
+	setPoints[6] = manual_pos;
+	pos = MANUAL;
 }
 
 void Arm::disablePID() {
 	pid->Disable();
 }
+
+void Arm::armMoveUpdate() {
+	double position = setPoints[pos];
+	pid->SetSetpoint(position);
+}
+
+
 Arm::~Arm() {
 
 }
