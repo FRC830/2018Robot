@@ -38,6 +38,7 @@ public:
 	static const int BLUE_LED_DIO = 2;
 
 	static const int ANLOG_GYRO = 0;
+	static const int POTENTIOMETER_ANALOG = 0;
 
 	static const int TICKS_TO_ACCEL = 10;
 
@@ -350,6 +351,7 @@ public:
 		}
 	}
 
+	float last_val = 0;
 	void TeleopPeriodic() override {
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
@@ -378,13 +380,13 @@ public:
 		}
 
 
-		if (value(copilot->LeftY())) {
-			arm->manualPosition(value(copilot->LeftY()));
+		down.toggle(copilot->LeftTrigger());
+		up.toggle(copilot->RightTrigger());
+
+		if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
+			arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
 		}
 		else {
-			up.toggle(copilot->LeftTrigger());
-			down.toggle(copilot->RightTrigger());
-
 			arm->teleopArmPosition(up, down);
 		}
 
