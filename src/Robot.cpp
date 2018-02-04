@@ -33,6 +33,9 @@ public:
 	static const int FRONT_RIGHT_PWM = 2;
 	static const int BACK_RIGHT_PWM = 3;
 
+	static const int LEFT_INTAKE_PWM = 4; //subject to choonge
+	static const int RIGHT_INTAKE_PWM = 5;
+
 	static const int RED_LED_DIO = 0;
 	static const int GREEN_LED_DIO = 1;
 	static const int BLUE_LED_DIO = 2;
@@ -71,6 +74,7 @@ public:
 	//PIDController *pid;
 
 	Arm *arm;
+	Intake *intake;
 
 
 
@@ -202,7 +206,14 @@ public:
 		pid->SetAbsoluteTolerance(5);
 		pid->Enable();8*/
 
-		arm = new Arm(new VictorSP(TEST_PWM), new AnalogPotentiometer(1, 270, -135));
+		arm = new Arm(
+			new VictorSP(TEST_PWM),
+			new AnalogPotentiometer(POTENTIOMETER_ANALOG, 270, -135)
+		);
+		intake = new Intake(
+			new VictorSP(LEFT_INTAKE_PWM),
+			new VictorSP(RIGHT_INTAKE_PWM)
+		);
 
 
 	}
@@ -231,15 +242,15 @@ public:
 
 	}
 
-	float getXSpeed (bool &acquired_once, float target_speed, float default_speed) {
+	float getXSpeed (float target_speed, float default_speed) {
 		if (target_speed) {
-			if(!acquired_once) {
-				acquired_once = true;
+			if(!acquired) {
+				acquired = true;
 			}
 			return target_speed;
 		}
 		else {
-			if (acquired_once) {
+			if (acquired) {
 				return 0;
 			}
 			else {
@@ -250,6 +261,7 @@ public:
 
 	float prev_y_speed = 0;
 	float prev_x_speed = 0;
+	bool output_cube = false;
 
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
@@ -276,16 +288,19 @@ public:
 
 		else if (time > 2 && time < 8) {
 			y_speed = 0.3;
+			arm->toSwitch();
+
 			if (acquired) {
 				y_speed = 0.5;
 			}
 			switch(mode) {
 			case CENTER:
+				output_cube = true;
 				if (mes == 'L') {
-					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), -0.3);
+					x_speed = getXSpeed(StrafeVisionCorrect(), -0.3);
 				}
 				else if (mes == 'R') {
-					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), 0.3);
+					x_speed = getXSpeed(StrafeVisionCorrect(), 0.3);
 				}
 				break;
 			case RIGHT:
@@ -293,12 +308,14 @@ public:
 					x_speed = 0;
 				}
 				else if (mes == 'R') {
-					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), 0);
+					x_speed = getXSpeed(StrafeVisionCorrect(), 0);
+					output_cube = true;
 				}
 				break;
 			case LEFT:
 				if (mes == 'L') {
-					x_speed = getXSpeed(acquired, StrafeVisionCorrect(), 0.2);
+					x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
+					output_cube = true;
 				}
 				else if (mes == 'R') {
 					x_speed = 0;
@@ -309,6 +326,14 @@ public:
 				y_speed = 0;
 				rot = 0;
 				break;
+			}
+		}
+		else if (time > 8 && time < 12) {
+			x_speed = 0;
+			y_speed = 0;
+			rot = 0;
+			if(output_cube){
+				intake->toOutput();
 			}
 		}
 
