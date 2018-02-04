@@ -1,1 +1,7 @@
 /Debug/
+
+.cproject
+build.xml
+build.properties
+.settings
+.project
