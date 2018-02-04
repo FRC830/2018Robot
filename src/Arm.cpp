@@ -8,18 +8,22 @@
 #include "Arm.h"
 
 Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(pot) {
+	p = 0.1f;
+	i = 0;
+	d = 0;
+	pos = DOWN;
+
 	pid = new PIDController(0.1, 0, 0, pot, armMotor);
 	pid->SetInputRange(-135,135); //subject to change
 	pid->SetOutputRange(-0.3, 0.3);
 	pid->SetAbsoluteTolerance(5);
+	pid->SetPID(p,i,d);
+	pid->SetSetpoint(pos);
 	pid->Enable();
+
 	up = false;
 	down = false;
-	p = 0.1f;
-	i = 0;
-	d = 0;
-	pid->SetPID(p,i,d);
-	setpoint = DOWN;
+
 }
 
 void Arm::toDown() {
@@ -64,17 +68,15 @@ void Arm::armMoveUpdate() {
 	pid->SetSetpoint(position);
 }
 
+float Arm::getPosition() {
+	return pot->Get();
+}
+
+float Arm::getSetPoint() {
+	return setPoints[pos];
+}
+
 
 Arm::~Arm() {
 
 }
-
-
-
-
-
-
-
-
-
-

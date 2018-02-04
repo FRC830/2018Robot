@@ -24,6 +24,8 @@ public:
 
 
 	void disablePID();
+	float getPosition();
+	float getSetPoint();
 	void armMoveUpdate();
 	virtual ~Arm();
 
@@ -33,12 +35,11 @@ private:
 	PIDController *pid;
 	bool up;
 	bool down;
-	int pos = 0;
+	int pos;
 	float p,i,d;
 
 	std::vector<double> setPoints = {0,10,20,30,40,50,0};
 	enum setPoint {DOWN, INTAKE, SWITCH, SCALE_LOW, SCALE_MID, SCALE_HIGH, MANUAL };
-	setPoint setpoint;
 	//random numbers atm
 };
 
