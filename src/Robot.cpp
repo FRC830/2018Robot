@@ -12,6 +12,7 @@
 #include <thread>
 #include <cmath>
 #include "Arm.h"
+#include "Intake.h"
 
 using namespace Lib830;
 using namespace std;
@@ -239,6 +240,7 @@ public:
 		gyro->Reset();
 		acquired = false;
 		vision = true;
+		arm->toDown();
 
 	}
 
@@ -341,6 +343,8 @@ public:
 		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
 		drive->DriveCartesian(f_x_speed, f_y_speed, rot, angle);
+		arm->armMoveUpdate();
+		intake->update();
 
 		SmartDashboard::PutNumber("x speed", f_x_speed);
 		SmartDashboard::PutNumber("y speed", f_y_speed);
@@ -350,6 +354,7 @@ public:
 
 		prev_x_speed = f_x_speed;
 		prev_y_speed = f_y_speed;
+		//comment
 
 	}
 

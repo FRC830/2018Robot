@@ -25,6 +25,8 @@ void Intake::toOutput() {
 }
 
 void Intake::update() {
+	float intakeSpeed = 0.5;
+	float outputSpeed = -0.5;
 	float time = timer.Get();
 	if (time > 2.0) {
 		intakeMode = NOTHING;

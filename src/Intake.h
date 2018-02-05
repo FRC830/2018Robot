@@ -23,9 +23,6 @@ private:
 	IntakeMode intakeMode;
 	VictorSP *leftMotor;
 	VictorSP *rightMotor;
-
-	static constexpr float intakeSpeed = 0.5;
-	static constexpr float outputSpeed = -0.5;
 };
 
 
