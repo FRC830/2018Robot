@@ -15,20 +15,26 @@ Intake::Intake(VictorSP *LeftMotor, VictorSP *RightMotor):leftMotor(LeftMotor), 
 Intake::~Intake() {}
 
 void Intake::toIntake() {
+	timer.Reset();
 	timer.Start();
 	intakeMode = INTAKE;
 }
 
 void Intake::toOutput() {
+	timer.Reset();
 	timer.Start();
 	intakeMode = OUTPUT;
+}
+
+void Intake::stop() {
+	intakeMode = NOTHING;
 }
 
 void Intake::update() {
 	float intakeSpeed = 0.5;
 	float outputSpeed = -0.5;
 	float time = timer.Get();
-	if (time > 2.0) {
+	if (time > 1.0) {
 		intakeMode = NOTHING;
 	}
 	switch (intakeMode) {
@@ -43,6 +49,5 @@ void Intake::update() {
 	default:
 		leftMotor->Set(0);
 		rightMotor->Set(0);
-		timer.Reset();
 	};
 }

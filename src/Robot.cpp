@@ -65,7 +65,7 @@ public:
 
 	Lib830::DigitalLED *led;
 
-	static const int TEST_PWM = 5;
+	static const int TEST_PWM = 6;
 
 	VictorSP * test;
 
@@ -383,12 +383,16 @@ public:
 
 	float last_val = 0;
 	void TeleopPeriodic() override {
+
+		led -> SetAllianceColor();
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
 		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
 		float gyro_read = 0;
 
+
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
+			led->Set(0, 1, 0);
 			gyro_read = gyro->GetAngle();
 		}
 
@@ -441,6 +445,15 @@ public:
 		//SmartDashboard::PutNumber("set point", setPoints[pos]);
 		//SmartDashboard::PutNumber("test speed", test->Get());
 
+		if(copilot->ButtonState(GamepadF310::BUTTON_Y)){
+			intake->toIntake();
+		}
+		else if(copilot->ButtonState(GamepadF310::BUTTON_X)){
+			intake->toOutput();
+		}
+
+		intake->update();
+
 	}
 
 	void TestPeriodic() {
@@ -448,6 +461,8 @@ public:
 	}
 	void DisabledPeriodic() {
 		drive->DriveCartesian(0,0,0);
+		led->RainbowFade(10);
+
 		//led->Disable();
 		//led->Alternate({1,0.7,0}, {0,0,1});
 
@@ -479,7 +494,6 @@ public:
 		//led->Set(0,1,0);
 		//DigitalLED::Color cyan = {0, 0.4, 1};
 
-		led->RainbowFade(10);
 		//cout << "vision correct: " << vision << endl;
 
 		//up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));

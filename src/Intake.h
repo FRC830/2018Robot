@@ -17,6 +17,7 @@ public:
 	void toIntake();
 	void toOutput();
 	void update();
+	void stop();
 	Timer timer;
 private:
 	enum IntakeMode {INTAKE, OUTPUT, NOTHING};
