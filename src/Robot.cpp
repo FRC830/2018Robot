@@ -29,10 +29,10 @@ private:
 	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
 
 public:
-	static const int FRONT_LEFT_PWM = 0;
-	static const int BACK_LEFT_PWM = 1;
+	static const int FRONT_LEFT_PWM = 5;
+	static const int BACK_LEFT_PWM = 6;
 	static const int FRONT_RIGHT_PWM = 2;
-	static const int BACK_RIGHT_PWM = 3;
+	static const int BACK_RIGHT_PWM = 1;
 
 	static const int LEFT_INTAKE_PWM = 4; //subject to choonge
 	static const int RIGHT_INTAKE_PWM = 5;
@@ -212,10 +212,10 @@ public:
 			new VictorSP(TEST_PWM),
 			new AnalogPotentiometer(POTENTIOMETER_ANALOG, 270, -135)
 		);
-		intake = new Intake(
-			new VictorSP(LEFT_INTAKE_PWM),
-			new VictorSP(RIGHT_INTAKE_PWM)
-		);
+//		intake = new Intake(
+//			new VictorSP(LEFT_INTAKE_PWM),
+//			new VictorSP(RIGHT_INTAKE_PWM)
+//		);
 
 
 	}
@@ -263,6 +263,7 @@ public:
 	}
 
 	float prev_y_speed = 0;
+
 	float prev_x_speed = 0;
 	bool output_cube = false;
 
@@ -384,8 +385,8 @@ public:
 	Toggle PID;
 	float last_val = 0;
 	void TeleopPeriodic() override {
-		DigitalLED::Color color1 = (0, 1, 0);
-		DigitalLED::Color color2 = (0, 1, 0);
+		DigitalLED::Color color1 = {0, 1, 0};
+		DigitalLED::Color color2 = {0, 1, 0};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
 		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
@@ -393,7 +394,7 @@ public:
 
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
-			color1 = (1, 0, 1);
+			color1 = {1, 0, 1};
 			gyro_read = gyro->GetAngle();
 		}
 
@@ -419,19 +420,19 @@ public:
 		up.toggle(copilot->RightTrigger());
 		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
-			color2 = (0,1,1);
+			color2 = {0,1,1};
 		}
 		else {
 			if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
 				arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
-				color2 = (1,1,0);
+				color2 = {1,1,0};
 			}
 			else {
 				arm->automaticPosition(up, down);
 			}
 		}
 		arm->armMoveUpdate();
-
+		led->Alternate(color1, color2);
 		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
 
 

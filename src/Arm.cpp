@@ -17,7 +17,7 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 
 	pid = new PIDController(p, i, d, pot, armMotor);
 	pid->SetInputRange(-135,135); //subject to change
-	pid->SetOutputRange(-0.3, 0.3);
+	pid->SetOutputRange(-1.0, 1.0);
 	pid->SetAbsoluteTolerance(5);
 	pid->SetPID(p,i,d);
 	pid->SetSetpoint(setPoints[pos]);
@@ -114,6 +114,9 @@ void Arm::armMoveUpdate() {
 		SmartDashboard::PutBoolean("to manual", toManual);
 		SmartDashboard::PutNumber("state", state); // 0 or 1
 	}
+	SmartDashboard::PutNumber("raw or pid", state);
+	SmartDashboard::PutNumber("arm motor speed", armMotor->Get());
+
 }
 
 float Arm::getPosition() {
