@@ -35,14 +35,14 @@ public:
 	static const int BACK_RIGHT_PWM = 1;
 
 	static const int LEFT_INTAKE_PWM = 4; //subject to choonge
-	static const int RIGHT_INTAKE_PWM = 5;
+	static const int RIGHT_INTAKE_PWM = 3;
 
 	static const int RED_LED_DIO = 0;
 	static const int GREEN_LED_DIO = 1;
 	static const int BLUE_LED_DIO = 2;
 
 	static const int ANLOG_GYRO = 0;
-	static const int POTENTIOMETER_ANALOG = 0;
+	static const int POTENTIOMETER_ANALOG = 1;
 
 	static const int TICKS_TO_ACCEL = 10;
 
@@ -59,13 +59,11 @@ public:
 	VictorSP fr;
 	VictorSP br;
 	Timer timer;
-	static const int DIO_RED = 0;
-	static const int DIO_GREEN = 1;
-	static const int DIO_BLUE = 2;
+
 
 	Lib830::DigitalLED *led;
 
-	static const int TEST_PWM = 6;
+	static const int TEST_PWM = 9;
 
 	VictorSP * test;
 
@@ -212,10 +210,10 @@ public:
 			new VictorSP(TEST_PWM),
 			new AnalogPotentiometer(POTENTIOMETER_ANALOG, 270, -135)
 		);
-//		intake = new Intake(
-//			new VictorSP(LEFT_INTAKE_PWM),
-//			new VictorSP(RIGHT_INTAKE_PWM)
-//		);
+		intake = new Intake(
+			new VictorSP(LEFT_INTAKE_PWM),
+			new VictorSP(RIGHT_INTAKE_PWM)
+		);
 
 
 	}
