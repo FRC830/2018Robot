@@ -109,6 +109,7 @@ public:
 
 			bool working = sink.GrabFrame(temp_image);
 			SmartDashboard::PutBoolean("working", working);
+
 			if (working) {
 				g_frame = true;
 				image = temp_image;
@@ -363,7 +364,6 @@ public:
 		double p = SmartDashboard::GetNumber("p", 0.1);
 		double i = SmartDashboard::GetNumber("i", 0);
 		double d =SmartDashboard::GetNumber("d", 0);
-
 		//pid->SetPID(p,i,d);
 	}
 
@@ -381,10 +381,11 @@ public:
 		}
 	}
 
+	Toggle PID;
 	float last_val = 0;
 	void TeleopPeriodic() override {
-
-		led -> SetAllianceColor();
+		DigitalLED::Color color1 = (0, 1, 0);
+		DigitalLED::Color color2 = (0, 1, 0);
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
 		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
@@ -392,7 +393,7 @@ public:
 
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
-			led->Set(0, 1, 0);
+			color1 = (1, 0, 1);
 			gyro_read = gyro->GetAngle();
 		}
 
@@ -416,14 +417,19 @@ public:
 
 		down.toggle(copilot->LeftTrigger());
 		up.toggle(copilot->RightTrigger());
-
-		if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
-			arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
+		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
+			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
+			color2 = (0,1,1);
 		}
 		else {
-			arm->teleopArmPosition(up, down);
+			if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
+				arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
+				color2 = (1,1,0);
+			}
+			else {
+				arm->automaticPosition(up, down);
+			}
 		}
-
 		arm->armMoveUpdate();
 
 		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());

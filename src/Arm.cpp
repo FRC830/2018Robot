@@ -12,7 +12,8 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 	i = 0;
 	d = 0;
 	pos = DOWN;
-	state = AUTOMATIC;
+	state = PID;
+	speed = 0;
 
 	pid = new PIDController(p, i, d, pot, armMotor);
 	pid->SetInputRange(-135,135); //subject to change
@@ -49,9 +50,10 @@ void Arm::toScale() {
 	pos = SCALE_MID;
 }
 
-void Arm::teleopArmPosition(Toggle &button_up, Toggle &button_down) {
+void Arm::automaticPosition(Toggle &button_up, Toggle &button_down) {
 	up = button_up;
 	down = button_down;
+	state = PID;
 	if (up) {
 		if (pos < 5) {
 			pos++;
@@ -71,9 +73,9 @@ void Arm::teleopArmPosition(Toggle &button_up, Toggle &button_down) {
 }
 
 void Arm::manualPosition(float button_up, float button_down) {
-	float manual_pos;
+	float manual_pos = 0;
 	float change = button_up - button_down;
-	state = MANUAL_STATE;
+	state = PID;
 	if (!toManual) {
 		manual_pos = setPoints[pos];
 		toManual = true;
@@ -87,26 +89,31 @@ void Arm::manualPosition(float button_up, float button_down) {
 	pos = MANUAL;
 }
 
-void Arm::disablePID() {
-	pid->Disable();
+void Arm::rawPosition(float speed){
+	this->speed=speed;
+	state = RAW;
 }
 
-void Arm::armMoveUpdate() {
-	double position = setPoints[pos];
-	pid->SetSetpoint(position);
-	if (pos < 6) {
-		state = AUTOMATIC;
-	}
 
-	if (state == MANUAL_STATE) {
-		toManual = false;
-		toAutomatic = true;
+void Arm::armMoveUpdate() {
+	pid->SetEnabled(state == PID);
+	if (state == RAW){
+		armMotor->Set(speed);
 	}
-	SmartDashboard::PutNumber("position", pos);
-	SmartDashboard::PutNumber("set point", position);
-	SmartDashboard::PutNumber("potentiometer", pot->Get());
-	SmartDashboard::PutBoolean("to manual", toManual);
-	SmartDashboard::PutNumber("state", state); // 0 or 1
+	else {
+		double position = setPoints[pos];
+		pid->SetSetpoint(position);
+
+		if (pos == 6) {
+			toManual = false;
+			toAutomatic = true;
+		}
+		SmartDashboard::PutNumber("position", pos);
+		SmartDashboard::PutNumber("set point", position);
+		SmartDashboard::PutNumber("potentiometer", pot->Get());
+		SmartDashboard::PutBoolean("to manual", toManual);
+		SmartDashboard::PutNumber("state", state); // 0 or 1
+	}
 }
 
 float Arm::getPosition() {
