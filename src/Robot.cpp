@@ -383,8 +383,8 @@ public:
 	Toggle PID;
 	float last_val = 0;
 	void TeleopPeriodic() override {
-		DigitalLED::Color color1 = {0, 1, 0};
-		DigitalLED::Color color2 = {0, 1, 0};
+		DigitalLED::Color color1 {DigitalLED::Lime};
+		DigitalLED::Color color2 {DigitalLED::Lime};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
 		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
@@ -392,7 +392,7 @@ public:
 
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
-			color1 = {1, 0, 1};
+			color1 = DigitalLED::Magenta;
 			gyro_read = gyro->GetAngle();
 		}
 
@@ -418,12 +418,12 @@ public:
 		up.toggle(copilot->RightTrigger());
 		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
-			color2 = {0,1,1};
+			color2 = DigitalLED::Cyan;
 		}
 		else {
 			if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
 				arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
-				color2 = {1,1,0};
+				color2 = DigitalLED::Yellow;
 			}
 			else {
 				arm->automaticPosition(up, down);
@@ -459,6 +459,7 @@ public:
 
 		intake->update();
 
+		led->Set(DigitalLED::AliceBlue);
 	}
 
 	void TestPeriodic() {
