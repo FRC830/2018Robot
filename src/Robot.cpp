@@ -29,13 +29,16 @@ private:
 	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
 
 public:
-	static const int FRONT_LEFT_PWM = 5;
-	static const int BACK_LEFT_PWM = 6;
-	static const int FRONT_RIGHT_PWM = 2;
-	static const int BACK_RIGHT_PWM = 1;
+	static const int FRONT_LEFT_PWM = 0;
+	static const int BACK_LEFT_PWM = 1;
+	static const int FRONT_RIGHT_PWM = 5;
+	static const int BACK_RIGHT_PWM = 6;
 
 	static const int LEFT_INTAKE_PWM = 4; //subject to choonge
 	static const int RIGHT_INTAKE_PWM = 3;
+
+	static const int ARM_PWM = 9;
+
 
 	static const int RED_LED_DIO = 0;
 	static const int GREEN_LED_DIO = 1;
@@ -62,8 +65,6 @@ public:
 
 
 	Lib830::DigitalLED *led;
-
-	static const int TEST_PWM = 9;
 
 	VictorSP * test;
 
@@ -207,8 +208,8 @@ public:
 		pid->Enable();8*/
 
 		arm = new Arm(
-			new VictorSP(TEST_PWM),
-			new AnalogPotentiometer(POTENTIOMETER_ANALOG, 270, -135)
+			new VictorSP(ARM_PWM),
+			new AnalogPotentiometer(POTENTIOMETER_ANALOG, 270, 0)
 		);
 		intake = new Intake(
 			new VictorSP(LEFT_INTAKE_PWM),
@@ -416,7 +417,7 @@ public:
 
 		down.toggle(copilot->LeftTrigger());
 		up.toggle(copilot->RightTrigger());
-		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
+		if (!PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
 			color2 = DigitalLED::Cyan;
 		}
@@ -504,6 +505,13 @@ public:
 
 		//up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
 		//down.toggle(pilot->ButtonState(GamepadF310::BUTTON_X));
+
+		SmartDashboard::PutNumber("pot position",arm->getRawPosition());
+		SmartDashboard::PutNumber("front left", fl.Get());
+		SmartDashboard::PutNumber("back left", bl.Get());
+		SmartDashboard::PutNumber("front right", fr.Get());
+		SmartDashboard::PutNumber("back right", br.Get());
+
 
 
 	}

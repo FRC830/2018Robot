@@ -23,7 +23,7 @@ public:
 	void manualPosition(float button_up, float button_down); //not done
 	void rawPosition(float speed);
 
-	float getPosition();
+	float getRawPosition();
 	float getSetPoint();
 	void armMoveUpdate();
 	virtual ~Arm();
@@ -41,7 +41,7 @@ private:
 	int pos;
 	float p,i,d;
 
-	std::vector<double> setPoints = {0,10,20,30,40,50,0};
+	std::vector<double> setPoints = {250,240,200,180,150, 0};
 	enum setPoint {DOWN, INTAKE, SWITCH, SCALE_LOW, SCALE_MID, SCALE_HIGH, MANUAL };
 	enum State {RAW, PID};
 	State state;

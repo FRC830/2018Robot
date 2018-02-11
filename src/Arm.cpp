@@ -16,7 +16,7 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 	speed = 0;
 
 	pid = new PIDController(p, i, d, pot, armMotor);
-	pid->SetInputRange(-135,135); //subject to change
+	pid->SetInputRange(135,270); //subject to change
 	pid->SetOutputRange(-1.0, 1.0);
 	pid->SetAbsoluteTolerance(5);
 	pid->SetPID(p,i,d);
@@ -81,8 +81,8 @@ void Arm::manualPosition(float button_up, float button_down) {
 		toManual = true;
 	}
 
-	if (manual_pos > 0 && manual_pos < 135) {
-		manual_pos = manual_pos + (change * 1); //subject to change
+	if (manual_pos > 135 && manual_pos < 270) {
+		manual_pos = manual_pos + (change * -1); //subject to change
 		setPoints[6] = manual_pos;
 	}
 
@@ -119,7 +119,7 @@ void Arm::armMoveUpdate() {
 
 }
 
-float Arm::getPosition() {
+float Arm::getRawPosition() {
 	return pot->Get();
 }
 
