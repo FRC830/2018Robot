@@ -29,12 +29,12 @@ private:
 	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
 
 public:
-	static const int FRONT_LEFT_PWM = 0;
-	static const int BACK_LEFT_PWM = 1;
-	static const int FRONT_RIGHT_PWM = 5;
-	static const int BACK_RIGHT_PWM = 6;
+	static const int FRONT_LEFT_PWM = 7;
+	static const int BACK_LEFT_PWM = 5;
+	static const int FRONT_RIGHT_PWM = 4;
+	static const int BACK_RIGHT_PWM = 0;
 
-	static const int LEFT_INTAKE_PWM = 4; //subject to choonge
+	static const int LEFT_INTAKE_PWM = 2; //subject to choonge
 	static const int RIGHT_INTAKE_PWM = 3;
 
 	static const int ARM_PWM = 9;
