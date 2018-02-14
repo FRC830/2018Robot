@@ -29,25 +29,25 @@ private:
 	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
 
 public:
-	static const int FRONT_LEFT_PWM = 7;
-	static const int BACK_LEFT_PWM = 5;
-	static const int FRONT_RIGHT_PWM = 4;
-	static const int BACK_RIGHT_PWM = 0;
+	static const int FRONT_LEFT_PWM = 1; //practice
+	static const int BACK_LEFT_PWM = 0; //practice
+	static const int FRONT_RIGHT_PWM = 3; //practice
+	static const int BACK_RIGHT_PWM = 2; //practice
 
-	static const int LEFT_INTAKE_PWM = 2; //subject to choonge
-	static const int RIGHT_INTAKE_PWM = 3;
+	static const int LEFT_INTAKE_PWM = 5; //subject to choonge
+	static const int RIGHT_INTAKE_PWM = 6;
 
 	static const int ARM_PWM = 9;
 
 
-	static const int RED_LED_DIO = 0;
-	static const int GREEN_LED_DIO = 1;
-	static const int BLUE_LED_DIO = 2;
+	static const int RED_LED_DIO = 10;
+	static const int GREEN_LED_DIO = 11;
+	static const int BLUE_LED_DIO = 12;
 
 	static const int ANLOG_GYRO = 0;
 	static const int POTENTIOMETER_ANALOG = 1;
 
-	static const int TICKS_TO_ACCEL = 10;
+	static const int TICKS_TO_ACCEL = 15;
 
 	//OmniDrive *drive;
 
@@ -359,12 +359,16 @@ public:
 
 	}
 
+	float change = 0;
 	void TeleopInit() {
 		vision = false;
 		double p = SmartDashboard::GetNumber("p", 0.1);
 		double i = SmartDashboard::GetNumber("i", 0);
 		double d =SmartDashboard::GetNumber("d", 0);
 		//pid->SetPID(p,i,d);
+		gyro->Reset();
+		change = 0;
+
 	}
 
 
@@ -384,6 +388,8 @@ public:
 	Toggle PID;
 	float last_val = 0;
 	void TeleopPeriodic() override {
+
+		float angle = gyro->GetAngle() - change;
 		DigitalLED::Color color1 {DigitalLED::Lime};
 		DigitalLED::Color color2 {DigitalLED::Lime};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
@@ -394,8 +400,17 @@ public:
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
 			color1 = DigitalLED::Magenta;
-			gyro_read = gyro->GetAngle();
+			gyro_read = angle;
 		}
+
+		if (!turn) {
+			turn = angle/-50;
+		}
+		else  {
+			change = gyro->GetAngle();
+		}
+
+		SmartDashboard::PutNumber("no reset gyro", gyro->GetAngle() - change);
 
 
 		drive->DriveCartesian(x_speed, y_speed, turn, gyro_read);
@@ -511,6 +526,7 @@ public:
 		SmartDashboard::PutNumber("back left", bl.Get());
 		SmartDashboard::PutNumber("front right", fr.Get());
 		SmartDashboard::PutNumber("back right", br.Get());
+		SmartDashboard::PutNumber("gyro", gyro->GetAngle());
 
 
 
