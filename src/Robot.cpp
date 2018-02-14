@@ -41,8 +41,8 @@ public:
 
 
 	static const int RED_LED_DIO = 10;
-	static const int GREEN_LED_DIO = 11;
-	static const int BLUE_LED_DIO = 12;
+	static const int GREEN_LED_DIO = 14;
+	static const int BLUE_LED_DIO = 15;
 
 	static const int ANLOG_GYRO = 0;
 	static const int POTENTIOMETER_ANALOG = 1;
@@ -483,7 +483,8 @@ public:
 	}
 	void DisabledPeriodic() {
 		drive->DriveCartesian(0,0,0);
-		led->RainbowFade(10);
+		//led->RainbowFade(10);
+		led->Set(1,1,1);
 
 		//led->Disable();
 		//led->Alternate({1,0.7,0}, {0,0,1});
