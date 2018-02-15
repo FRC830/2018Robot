@@ -40,14 +40,19 @@ public:
 	static const int ARM_PWM = 9;
 
 
-	static const int RED_LED_DIO = 10;
-	static const int GREEN_LED_DIO = 14;
+	static const int RED_LED_DIO = 0;
+	static const int GREEN_LED_DIO = 8;
 	static const int BLUE_LED_DIO = 15;
 
 	static const int ANLOG_GYRO = 0;
 	static const int POTENTIOMETER_ANALOG = 1;
 
 	static const int TICKS_TO_ACCEL = 15;
+
+	static const int RED_RELAY = 0;
+	static const int GREEN_RELAY = 1;
+	static const int BLUE_RELAY = 2;
+
 
 	//OmniDrive *drive;
 
@@ -56,6 +61,9 @@ public:
 	Lib830::GamepadF310 * copilot;
 
 	frc::AnalogGyro *gyro;
+	Relay redLED;
+	Relay greenLED;
+	Relay blueLED;
 
 	VictorSP fl;
 	VictorSP bl;
@@ -76,10 +84,11 @@ public:
 	Arm *arm;
 	Intake *intake;
 
+	DigitalLED *relayLED;
 
 
 
-	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM) {}
+	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM), redLED(RED_RELAY, Relay::kForwardOnly), greenLED(GREEN_RELAY, Relay::kForwardOnly), blueLED(BLUE_RELAY, Relay::kForwardOnly) {}
 
 	static Toggle vision;
 	static void CameraPeriodic() {
@@ -294,7 +303,7 @@ public:
 			arm->toSwitch();
 
 			if (acquired) {
-				y_speed = 0.5;
+				y_speed = 0.5; //set speed to be slower
 			}
 			switch(mode) {
 			case CENTER:
@@ -368,6 +377,7 @@ public:
 		//pid->SetPID(p,i,d);
 		gyro->Reset();
 		change = 0;
+		led->Disable();
 
 	}
 
@@ -390,17 +400,23 @@ public:
 	void TeleopPeriodic() override {
 
 		float angle = gyro->GetAngle() - change;
-		DigitalLED::Color color1 {DigitalLED::Lime};
-		DigitalLED::Color color2 {DigitalLED::Lime};
+		//DigitalLED::Color color1 {DigitalLED::Lime};
+		//DigitalLED::Color color2 {DigitalLED::Lime};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
-		float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), TICKS_TO_ACCEL);
+		//float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), 5);
+		float turn = value(pilot->RightX()/2);
+
+		SmartDashboard::PutNumber("value turn", value(pilot->RightX()));
 		float gyro_read = 0;
 
-
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
-			color1 = DigitalLED::Magenta;
-			gyro_read = angle;
+			//color1 = DigitalLED::Magenta;
+			led->Set(0,0,0);
+			gyro_read = gyro->GetAngle();
+		}
+		else {
+			led->Set(1,0,1);
 		}
 
 		if (!turn) {
@@ -432,39 +448,20 @@ public:
 
 		down.toggle(copilot->LeftTrigger());
 		up.toggle(copilot->RightTrigger());
-		if (!PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
+		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
-			color2 = DigitalLED::Cyan;
+			//color2 = DigitalLED::Cyan;
 		}
 		else {
 			if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
 				arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
-				color2 = DigitalLED::Yellow;
+				//color2 = DigitalLED::Yellow;
 			}
 			else {
 				arm->automaticPosition(up, down);
 			}
 		}
 		arm->armMoveUpdate();
-		led->Alternate(color1, color2);
-		//led->Set(pilot->LeftTrigger(), pilot->RightTrigger(), pilot->LeftY());
-
-
-		//test->Set(pilot->RightY());
-
-		/*vector<float> setPoints = {0, 31.5, -90.1, 23.6, 20.0};
-
-
-		armMove(up, down, pos); */
-
-		//pid->SetSetpoint(setPoints[pos]);
-
-		//SmartDashboard::PutNumber("pid output", pid->Get());
-
-		//SmartDashboard::PutNumber("pos", pos);
-		//SmartDashboard::PutNumber("potentiometer", pot->Get());
-		//SmartDashboard::PutNumber("set point", setPoints[pos]);
-		//SmartDashboard::PutNumber("test speed", test->Get());
 
 		if(copilot->ButtonState(GamepadF310::BUTTON_Y)){
 			intake->toIntake();
@@ -475,7 +472,8 @@ public:
 
 		intake->update();
 
-		led->Set(DigitalLED::AliceBlue);
+		//led->Set(DigitalLED::AliceBlue);
+
 	}
 
 	void TestPeriodic() {
@@ -484,7 +482,7 @@ public:
 	void DisabledPeriodic() {
 		drive->DriveCartesian(0,0,0);
 		//led->RainbowFade(10);
-		led->Set(1,1,1);
+		//led->Set(1,1,1);
 
 		//led->Disable();
 		//led->Alternate({1,0.7,0}, {0,0,1});
@@ -528,6 +526,13 @@ public:
 		SmartDashboard::PutNumber("front right", fr.Get());
 		SmartDashboard::PutNumber("back right", br.Get());
 		SmartDashboard::PutNumber("gyro", gyro->GetAngle());
+
+//		redLED.Set(Relay::kOn);
+//		greenLED.Set(Relay::kOn);
+//		blueLED.Set(Relay::kOn);
+//		SmartDashboard::PutNumber("relay get", redLED.Get());
+
+
 
 
 
