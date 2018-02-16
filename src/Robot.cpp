@@ -106,7 +106,7 @@ public:
 			bl(BACK_LEFT_PWM),
 			fr(FRONT_RIGHT_PWM),
 			br(BACK_RIGHT_PWM),
-			turnPID(1/80.0,0,0,turnController,turnController,0.02)
+			turnPID(1/80.0,0.0,0.05,turnController,turnController,0.02)
 //			redLED(RED_RELAY, Relay::kForwardOnly),
 //			greenLED(GREEN_RELAY, Relay::kForwardOnly),
 //			blueLED(BLUE_RELAY, Relay::kForwardOnly)
@@ -318,25 +318,25 @@ public:
 
 		float time = timer.Get();
 
-		if (time < 2) {
+		if (time < 1) {
 			y_speed = 0.5;
 		}
 
-		else if (time > 2 && time < 8) {
+		else if (time > 1 && time < 3) {
 			y_speed = 0.3;
 			arm->toSwitch();
 
 			if (acquired) {
-				y_speed = 0.5; //set speed to be slower
+				y_speed = 0.3; //set speed to be slower
 			}
 			switch(mode) {
 			case CENTER:
 				output_cube = true;
 				if (mes == 'L') {
-					x_speed = getXSpeed(StrafeVisionCorrect(), -0.3);
+					x_speed = getXSpeed(StrafeVisionCorrect(), -0.7);
 				}
 				else if (mes == 'R') {
-					x_speed = getXSpeed(StrafeVisionCorrect(), 0.3);
+					x_speed = getXSpeed(StrafeVisionCorrect(), 0.7);
 				}
 				break;
 			case RIGHT:
@@ -364,7 +364,7 @@ public:
 				break;
 			}
 		}
-		else if (time > 8 && time < 12) {
+		else if (time > 5 && time < 12) {
 			x_speed = 0;
 			y_speed = 0;
 			rot = 0;
@@ -401,10 +401,6 @@ public:
 		turnPID.Enable();
 
 		vision = false;
-		double p = SmartDashboard::GetNumber("p", 0.1);
-		double i = SmartDashboard::GetNumber("i", 0);
-		double d =SmartDashboard::GetNumber("d", 0);
-		//pid->SetPID(p,i,d);
 		gyro->Reset();
 		change = 0;
 		led->Disable();
