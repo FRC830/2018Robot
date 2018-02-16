@@ -29,10 +29,10 @@ private:
 	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
 
 public:
-	static const int FRONT_LEFT_PWM = 1; //practice
-	static const int BACK_LEFT_PWM = 0; //practice
-	static const int FRONT_RIGHT_PWM = 3; //practice
-	static const int BACK_RIGHT_PWM = 2; //practice
+	static const int FRONT_LEFT_PWM = 4; //real
+	static const int BACK_LEFT_PWM = 9; //real
+	static const int FRONT_RIGHT_PWM = 0; //real
+	static const int BACK_RIGHT_PWM = 1; //real
 
 	static const int LEFT_INTAKE_PWM = 5; //subject to choonge
 	static const int RIGHT_INTAKE_PWM = 6;
@@ -40,9 +40,9 @@ public:
 	static const int ARM_PWM = 9;
 
 
-	static const int RED_LED_DIO = 0;
-	static const int GREEN_LED_DIO = 8;
-	static const int BLUE_LED_DIO = 15;
+	static const int RED_LED_DIO = 9;
+	static const int GREEN_LED_DIO = 24;
+	static const int BLUE_LED_DIO = 25;
 
 	static const int ANLOG_GYRO = 0;
 	static const int POTENTIOMETER_ANALOG = 1;
@@ -419,8 +419,8 @@ public:
 			led->Set(1,0,1);
 		}
 
-		if (!turn) {
-			turn = angle/-50;
+		if (pilot->LeftTrigger()>0.2) {
+			turn = angle/-80;
 		}
 		else  {
 			change = gyro->GetAngle();
@@ -429,14 +429,14 @@ public:
 		SmartDashboard::PutNumber("no reset gyro", gyro->GetAngle() - change);
 
 
-		drive->DriveCartesian(x_speed, y_speed, turn, gyro_read);
+		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
 
 		prev_y_speed = y_speed;
 		prev_x_speed = x_speed;
 		prev_turn = turn;
 
 		SmartDashboard::PutNumber("gyro read", gyro_read);
-		SmartDashboard::PutBoolean("field orident", field_orient);
+		SmartDashboard::PutBoolean("field orient", field_orient);
 		SmartDashboard::PutNumber("Left y", value(pilot->LeftY()));
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
@@ -510,7 +510,7 @@ public:
 		}
 	}
 
-	void RobotPeriodic() {
+	void RobotPeriodic() override {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
 		//led->Set(0,1,0);
 		//DigitalLED::Color cyan = {0, 0.4, 1};
@@ -531,6 +531,12 @@ public:
 //		greenLED.Set(Relay::kOn);
 //		blueLED.Set(Relay::kOn);
 //		SmartDashboard::PutNumber("relay get", redLED.Get());
+		static Timer t2;
+		t2.Start();
+		if (int(t2.Get()) % 2)
+			led->Set(1,1,1);
+		else
+			led->Set(0,0,0);
 
 
 
