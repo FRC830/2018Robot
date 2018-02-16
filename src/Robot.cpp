@@ -17,6 +17,17 @@
 using namespace Lib830;
 using namespace std;
 
+class TurnController : public PIDSource, public PIDOutput {
+public :
+	std::atomic<double> gyro_angle;
+	std::atomic<double> turn;
+	double PIDGet(){
+		return gyro_angle;
+	}
+	void PIDWrite(double turn){
+		this->turn = turn;
+	}
+};
 
 class Robot: public frc::IterativeRobot {
 private:
@@ -61,9 +72,9 @@ public:
 	Lib830::GamepadF310 * copilot;
 
 	frc::AnalogGyro *gyro;
-	Relay redLED;
-	Relay greenLED;
-	Relay blueLED;
+//	Relay redLED;
+//	Relay greenLED;
+//	Relay blueLED;
 
 	VictorSP fl;
 	VictorSP bl;
@@ -71,6 +82,8 @@ public:
 	VictorSP br;
 	Timer timer;
 
+	TurnController turnController;
+	PIDController turnPID;
 
 	Lib830::DigitalLED *led;
 
@@ -88,7 +101,16 @@ public:
 
 
 
-	Robot() :IterativeRobot(), fl(FRONT_LEFT_PWM), bl(BACK_LEFT_PWM), fr(FRONT_RIGHT_PWM), br(BACK_RIGHT_PWM), redLED(RED_RELAY, Relay::kForwardOnly), greenLED(GREEN_RELAY, Relay::kForwardOnly), blueLED(BLUE_RELAY, Relay::kForwardOnly) {}
+	Robot() :IterativeRobot(),
+			fl(FRONT_LEFT_PWM),
+			bl(BACK_LEFT_PWM),
+			fr(FRONT_RIGHT_PWM),
+			br(BACK_RIGHT_PWM),
+			turnPID(1/80.0,0,0,turnController,turnController,0.02)
+//			redLED(RED_RELAY, Relay::kForwardOnly),
+//			greenLED(GREEN_RELAY, Relay::kForwardOnly),
+//			blueLED(BLUE_RELAY, Relay::kForwardOnly)
+			{led = nullptr;}
 
 	static Toggle vision;
 	static void CameraPeriodic() {
@@ -226,6 +248,8 @@ public:
 		);
 
 
+		turnPID.SetName("turn PID");
+		SmartDashboard::PutData(&turnPID);
 	}
 
 	/*
@@ -370,6 +394,12 @@ public:
 
 	float change = 0;
 	void TeleopInit() {
+		turnPID.SetInputRange(-180,180);
+		turnPID.SetOutputRange(-0.3,0.3);
+		turnPID.SetAbsoluteTolerance(1);
+		turnPID.SetSetpoint(0);
+		turnPID.Enable();
+
 		vision = false;
 		double p = SmartDashboard::GetNumber("p", 0.1);
 		double i = SmartDashboard::GetNumber("i", 0);
@@ -400,10 +430,11 @@ public:
 	void TeleopPeriodic() override {
 
 		float angle = gyro->GetAngle() - change;
+		turnController.gyro_angle = angle;
 		//DigitalLED::Color color1 {DigitalLED::Lime};
 		//DigitalLED::Color color2 {DigitalLED::Lime};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
-		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL);
+		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL*3);
 		//float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), 5);
 		float turn = value(pilot->RightX()/2);
 
@@ -420,13 +451,13 @@ public:
 		}
 
 		if (pilot->LeftTrigger()>0.2) {
-			turn = angle/-80;
+			turn = turnController.turn;
 		}
 		else  {
 			change = gyro->GetAngle();
 		}
 
-		SmartDashboard::PutNumber("no reset gyro", gyro->GetAngle() - change);
+		SmartDashboard::PutNumber("adjusted angle", angle);
 
 
 		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
