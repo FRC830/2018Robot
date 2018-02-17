@@ -13,6 +13,7 @@
 #include <cmath>
 #include "Arm.h"
 #include "Intake.h"
+#include "EncoderDrive.h"
 
 using namespace Lib830;
 using namespace std;
@@ -37,7 +38,7 @@ private:
 	const std::string autoNameCustom = "My Auto";
 	std::string autoSelected; */
 
-	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT};
+	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT, STRAIGHT};
 
 public:
 	static const int FRONT_LEFT_PWM = 4; //real
@@ -45,10 +46,16 @@ public:
 	static const int FRONT_RIGHT_PWM = 0; //real
 	static const int BACK_RIGHT_PWM = 1; //real
 
+//	static const int FRONT_LEFT_PWM = 1; //practice
+//	static const int BACK_LEFT_PWM = 0; //practice
+//	static const int FRONT_RIGHT_PWM = 3; //practice
+//	static const int BACK_RIGHT_PWM = 2; //practice
+
+
 	static const int LEFT_INTAKE_PWM = 5; //subject to choonge
 	static const int RIGHT_INTAKE_PWM = 6;
 
-	static const int ARM_PWM = 9;
+	static const int ARM_PWM = 8;
 
 
 	static const int RED_LED_DIO = 9;
@@ -64,8 +71,15 @@ public:
 	static const int GREEN_RELAY = 1;
 	static const int BLUE_RELAY = 2;
 
+	static const int FL_ENCODER_DIO_ONE = 0;
+	static const int FL_ENCODER_DIO_TWO = 1;
+	static const int BL_ENCODER_DIO_ONE = 2;
+	static const int BL_ENCODER_DIO_TWO = 3;
+	static const int FR_ENCODER_DIO_ONE = 4;
+	static const int FR_ENCODER_DIO_TWO = 5;
+	static const int BR_ENCODER_DIO_ONE = 6;
+	static const int BR_ENCODER_DIO_TWO = 7;
 
-	//OmniDrive *drive;
 
 	MecanumDrive *drive;
 	Lib830::GamepadF310 * pilot;
@@ -99,6 +113,10 @@ public:
 
 	DigitalLED *relayLED;
 
+	Toggle gyroCorrect;
+
+//	EncoderDrive *autonDrive;
+
 
 
 	Robot() :IterativeRobot(),
@@ -106,7 +124,8 @@ public:
 			bl(BACK_LEFT_PWM),
 			fr(FRONT_RIGHT_PWM),
 			br(BACK_RIGHT_PWM),
-			turnPID(1/80.0,0.0,0.05,turnController,turnController,0.02)
+			turnPID(1/80.0,0.0,0.05,turnController,turnController,0.02),
+			gyroCorrect(true)
 //			redLED(RED_RELAY, Relay::kForwardOnly),
 //			greenLED(GREEN_RELAY, Relay::kForwardOnly),
 //			blueLED(BLUE_RELAY, Relay::kForwardOnly)
@@ -174,7 +193,7 @@ public:
 
 	float StrafeVisionCorrect(){
 		float midx = SmartDashboard::GetNumber("mid point x", 160);
-		return (midx-160)/260;
+		return (midx-160)/160;
 	}
 
 	void RobotInit() {
@@ -219,6 +238,7 @@ public:
 		chooser->AddObject("Right", new AutoMode(RIGHT));
 		chooser->AddObject("Center", new AutoMode(CENTER));
 		chooser->AddDefault("Nothing", new AutoMode(NOTHING));
+		chooser->AddObject("Straight", new AutoMode(STRAIGHT));
 
 		SmartDashboard::PutData(chooser);
 
@@ -250,6 +270,15 @@ public:
 
 		turnPID.SetName("turn PID");
 		SmartDashboard::PutData(&turnPID);
+//
+//		autonDrive = new EncoderDrive(
+//				new Encoder(FL_ENCODER_DIO_ONE, FL_ENCODER_DIO_TWO),
+//				new Encoder(BL_ENCODER_DIO_ONE, BL_ENCODER_DIO_TWO),
+//				new Encoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO),
+//				new Encoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO),
+//				drive
+//		);
+
 	}
 
 	/*
@@ -313,7 +342,7 @@ public:
 		float x_speed = 0;
 		float y_speed = 0;
 		float angle = gyro->GetAngle();
-		float rot = angle/-60;
+		float rot = angle/-30;
 
 
 		float time = timer.Get();
@@ -322,7 +351,7 @@ public:
 			y_speed = 0.5;
 		}
 
-		else if (time > 1 && time < 3) {
+		else if (time > 1 && time < 8) {
 			y_speed = 0.3;
 			arm->toSwitch();
 
@@ -357,6 +386,8 @@ public:
 					x_speed = 0;
 				}
 				break;
+			case STRAIGHT:
+				break;
 			default:
 				x_speed = 0;
 				y_speed = 0;
@@ -364,7 +395,7 @@ public:
 				break;
 			}
 		}
-		else if (time > 5 && time < 12) {
+		else if (time > 8 && time < 12) {
 			x_speed = 0;
 			y_speed = 0;
 			rot = 0;
@@ -373,10 +404,11 @@ public:
 			}
 		}
 
+
 		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
-		drive->DriveCartesian(f_x_speed, f_y_speed, rot, angle);
+		drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
 		arm->armMoveUpdate();
 		intake->update();
 
@@ -392,13 +424,28 @@ public:
 
 	}
 
+	void doA180(Toggle &pressed) {
+		float setpoint = turnPID.GetSetpoint();
+
+		if (pressed) {
+			setpoint += 181;
+		}
+		pressed = false;
+		turnPID.SetSetpoint(setpoint);
+		SmartDashboard::PutNumber("setpoint", setpoint);
+		led->RainbowFade(1);
+	}
+	Toggle turn_180;
+
 	float change = 0;
 	void TeleopInit() {
-		turnPID.SetInputRange(-180,180);
+		turnPID.SetInputRange(0,360);
 		turnPID.SetOutputRange(-0.3,0.3);
 		turnPID.SetAbsoluteTolerance(1);
 		turnPID.SetSetpoint(0);
+		turnPID.SetContinuous();
 		turnPID.Enable();
+
 
 		vision = false;
 		gyro->Reset();
@@ -421,6 +468,7 @@ public:
 		}
 	}
 
+	float gyroTarget = 0;
 	Toggle PID;
 	float last_val = 0;
 	void TeleopPeriodic() override {
@@ -431,7 +479,6 @@ public:
 		//DigitalLED::Color color2 {DigitalLED::Lime};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
 		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL*3);
-		//float turn =  Lib830::accel(prev_turn, value(pilot->RightX()), 5);
 		float turn = value(pilot->RightX()/2);
 
 		SmartDashboard::PutNumber("value turn", value(pilot->RightX()));
@@ -446,21 +493,32 @@ public:
 			led->Set(1,0,1);
 		}
 
-		if (pilot->LeftTrigger()>0.2) {
+
+		if (gyroCorrect.toggle(pilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
 			turn = turnController.turn;
+			gyroTarget += 2*value(pilot->RightX());
+			if (gyroTarget < 360){
+				gyroTarget += 360;
+			}
+			turnPID.SetSetpoint(fmod(gyroTarget,360));
 		}
 		else  {
 			change = gyro->GetAngle();
 		}
+		turn_180.toggle(pilot->DPadLeft());
+		doA180(turn_180);
+
+		SmartDashboard::PutBoolean("180 turn",turn_180);
 
 		SmartDashboard::PutNumber("adjusted angle", angle);
 
+		float final_turn =  Lib830::accel(prev_turn, turn, 5);
 
-		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
+		drive->DriveCartesian(x_speed, y_speed, final_turn, -gyro_read);
 
 		prev_y_speed = y_speed;
 		prev_x_speed = x_speed;
-		prev_turn = turn;
+		prev_turn = final_turn;
 
 		SmartDashboard::PutNumber("gyro read", gyro_read);
 		SmartDashboard::PutBoolean("field orient", field_orient);
