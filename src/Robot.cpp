@@ -115,7 +115,13 @@ public:
 
 	Toggle gyroCorrect;
 
-//	EncoderDrive *autonDrive;
+//	SuperEncoder *flencoder;
+//	SuperEncoder *blencoder;
+//	SuperEncoder *frencoder;
+//	SuperEncoder *brencoder;
+//
+//	EncoderDrive *encoderDrive;
+
 
 
 
@@ -126,6 +132,7 @@ public:
 			br(BACK_RIGHT_PWM),
 			turnPID(1/80.0,0.0,0.05,turnController,turnController,0.02),
 			gyroCorrect(true)
+
 //			redLED(RED_RELAY, Relay::kForwardOnly),
 //			greenLED(GREEN_RELAY, Relay::kForwardOnly),
 //			blueLED(BLUE_RELAY, Relay::kForwardOnly)
@@ -270,13 +277,13 @@ public:
 
 		turnPID.SetName("turn PID");
 		SmartDashboard::PutData(&turnPID);
-//
-//		autonDrive = new EncoderDrive(
-//				new Encoder(FL_ENCODER_DIO_ONE, FL_ENCODER_DIO_TWO),
-//				new Encoder(BL_ENCODER_DIO_ONE, BL_ENCODER_DIO_TWO),
-//				new Encoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO),
-//				new Encoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO),
-//				drive
+
+//		encoderDrive = new EncoderDrive (
+//			new SuperEncoder(FL_ENCODER_DIO_ONE, FL_ENCODER_DIO_TWO, true),
+//			new SuperEncoder(BL_ENCODER_DIO_ONE, BL_ENCODER_DIO_TWO, true),
+//			new SuperEncoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO),
+//			new SuperEncoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO),
+//			&fl, &bl, &fr, &br
 //		);
 
 	}
@@ -408,7 +415,7 @@ public:
 		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
-		drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
+		//drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
 		arm->armMoveUpdate();
 		intake->update();
 
@@ -438,6 +445,9 @@ public:
 	Toggle turn_180;
 
 	float change = 0;
+	int times_ran = 0;
+	float raw_total = 0;
+
 	void TeleopInit() {
 		turnPID.SetInputRange(0,360);
 		turnPID.SetOutputRange(-0.3,0.3);
@@ -471,7 +481,27 @@ public:
 	float gyroTarget = 0;
 	Toggle PID;
 	float last_val = 0;
+
+
 	void TeleopPeriodic() override {
+//		SmartDashboard::PutNumber("fl encoder", flencoder.GetRate());
+//		SmartDashboard::PutNumber("bl encoder", blencoder.GetRate());
+//		SmartDashboard::PutNumber("fr encoder", frencoder.GetRate());
+//		SmartDashboard::PutNumber("br encoder", brencoder.GetRate());
+
+
+//		if (pilot->LeftY() > 0.5) {
+//			times_ran ++;
+//			raw_total += flencoder.GetRate();
+//			SmartDashboard::PutNumber("rate average", raw_total/ times_ran);
+//		}
+//		else {
+//			times_ran = 0;
+//			raw_total = 0;
+//		}
+
+
+
 
 		float angle = gyro->GetAngle() - change;
 		turnController.gyro_angle = angle;
@@ -493,6 +523,7 @@ public:
 			led->Set(1,0,1);
 		}
 
+		SmartDashboard::PutBoolean("gyro correct", gyroCorrect);
 
 		if (gyroCorrect.toggle(pilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
 			turn = turnController.turn;
@@ -513,6 +544,8 @@ public:
 		SmartDashboard::PutNumber("adjusted angle", angle);
 
 		float final_turn =  Lib830::accel(prev_turn, turn, 5);
+
+		//encoderDrive->DriveCarties(x_speed, y_speed, final_turn, 0);
 
 		drive->DriveCartesian(x_speed, y_speed, final_turn, -gyro_read);
 
@@ -565,7 +598,7 @@ public:
 		//lw->Run();
 	}
 	void DisabledPeriodic() {
-		drive->DriveCartesian(0,0,0);
+		//drive->DriveCartesian(0,0,0);
 		//led->RainbowFade(10);
 		//led->Set(1,1,1);
 
@@ -622,10 +655,6 @@ public:
 			led->Set(1,1,1);
 		else
 			led->Set(0,0,0);
-
-
-
-
 
 	}
 
