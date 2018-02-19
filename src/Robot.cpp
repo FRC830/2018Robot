@@ -30,6 +30,7 @@ public :
 	}
 };
 
+
 class Robot: public frc::IterativeRobot {
 private:
 	/*frc::LiveWindow* lw = LiveWindow::GetInstance();
@@ -115,12 +116,10 @@ public:
 
 	Toggle gyroCorrect;
 
-//	SuperEncoder *flencoder;
-//	SuperEncoder *blencoder;
-//	SuperEncoder *frencoder;
-//	SuperEncoder *brencoder;
-//
-//	EncoderDrive *encoderDrive;
+	Encoder *flencoder;
+	Encoder *blencoder;
+	Encoder *frencoder;
+	Encoder *brencoder;
 
 
 
@@ -130,7 +129,7 @@ public:
 			bl(BACK_LEFT_PWM),
 			fr(FRONT_RIGHT_PWM),
 			br(BACK_RIGHT_PWM),
-			turnPID(1/80.0,0.0,0.05,turnController,turnController,0.02),
+			turnPID(1/80.0, 0.0, 0.05, turnController,turnController,0.02),
 			gyroCorrect(true)
 
 //			redLED(RED_RELAY, Relay::kForwardOnly),
@@ -217,6 +216,7 @@ public:
 				br
 		);
 
+
 		pilot = new Lib830::GamepadF310(0);
 		copilot = new Lib830::GamepadF310(1);
 
@@ -279,13 +279,23 @@ public:
 		SmartDashboard::PutData(&turnPID);
 
 //		encoderDrive = new EncoderDrive (
-//			new SuperEncoder(FL_ENCODER_DIO_ONE, FL_ENCODER_DIO_TWO, true),
-//			new SuperEncoder(BL_ENCODER_DIO_ONE, BL_ENCODER_DIO_TWO, true),
-//			new SuperEncoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO),
-//			new SuperEncoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO),
+//			new Encoder(FL_ENCODER_DIO_ONE, FL_ENCODER_DIO_TWO),
+//			new Encoder(BL_ENCODER_DIO_ONE, BL_ENCODER_DIO_TWO, true),
+//			new Encoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO, true),
+//			new Encoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO, true),
 //			&fl, &bl, &fr, &br
 //		);
 
+		flencoder = new Encoder(FL_ENCODER_DIO_ONE, FL_ENCODER_DIO_TWO, true);
+		blencoder = new Encoder(BL_ENCODER_DIO_ONE, BL_ENCODER_DIO_TWO, true);
+		frencoder = new Encoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO);
+		brencoder = new Encoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO);
+		SmartDashboard::PutNumber("pulse per rev", 1024);
+
+	}
+
+	double GetEncoderDistance(Encoder *encoder) {
+		return encoder->GetDistancePerPulse() * encoder->GetRaw();
 	}
 
 	/*
@@ -310,6 +320,20 @@ public:
 		acquired = false;
 		vision = true;
 		arm->toDown();
+		flencoder->Reset();
+		blencoder->Reset();
+		frencoder->Reset();
+		brencoder->Reset();
+
+
+		float pulse_per_rev = SmartDashboard::GetNumber("pulse per rev", 1024.0);
+
+		flencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
+		blencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
+		frencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
+		brencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
+
+
 
 	}
 
@@ -335,11 +359,19 @@ public:
 	float prev_x_speed = 0;
 	bool output_cube = false;
 
+	float CORRECT_SIDE_SCALE_DIST = 305;
+	float distance = 0;
+	float start_time = 0;
+
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
 		SmartDashboard::PutString("message", message);
 		char mes = message[0];
+		char mes_2 = message[1];
 		cout << "first character: " << mes << endl;
+		cout << "second character: " << mes_2 << endl;
+
+
 
 		AutoMode mode = NOTHING;
 		if (chooser->GetSelected()) {
@@ -353,6 +385,8 @@ public:
 
 
 		float time = timer.Get();
+
+		distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
 
 		if (time < 1) {
 			y_speed = 0.5;
@@ -377,7 +411,35 @@ public:
 				break;
 			case RIGHT:
 				if (mes == 'L') {
-					x_speed = 0;
+					x_speed = getXSpeed(StrafeVisionCorrect(), -0.2);
+					if (acquired && StrafeVisionCorrect() < 5) {//
+						start_time = time;
+						x_speed = 0.5;
+						acquired = false;
+
+					}
+					else if (!acquired && start_time) {
+						x_speed = 0.5;
+						SmartDashboard::PutNumber("start time", time - start_time);
+						if (time - start_time > 0.5) {
+							x_speed = 0;
+
+							if (mes_2 == 'R') {
+								if (distance < CORRECT_SIDE_SCALE_DIST) {
+									y_speed = (CORRECT_SIDE_SCALE_DIST - distance)/50;
+									if (time- start_time > 1.25) {
+										x_speed = -0.8;
+									}
+								}
+								else {
+									y_speed = 0;
+								}
+							}
+							else if (mes_2 == 'L') {
+								/*do stuff*/
+							}
+						}
+					}
 				}
 				else if (mes == 'R') {
 					x_speed = getXSpeed(StrafeVisionCorrect(), 0);
@@ -411,11 +473,14 @@ public:
 			}
 		}
 
+		SmartDashboard::PutNumber("get distance", distance);
+		SmartDashboard::PutNumber("raw", flencoder->GetRaw());
+
 
 		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
-		//drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
+		drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
 		arm->armMoveUpdate();
 		intake->update();
 
@@ -431,15 +496,15 @@ public:
 
 	}
 
-	void doA180(Toggle &pressed) {
-		float setpoint = turnPID.GetSetpoint();
+	float gyroTarget = 0;
 
+	void doA180(Toggle &pressed) {
 		if (pressed) {
-			setpoint += 181;
+			cout << "PRESSED SUCCESS!" <<endl;
+			gyroTarget += 181;
+			pressed = false;
 		}
-		pressed = false;
-		turnPID.SetSetpoint(setpoint);
-		SmartDashboard::PutNumber("setpoint", setpoint);
+		SmartDashboard::PutNumber("setpoint", gyroTarget);
 		led->RainbowFade(1);
 	}
 	Toggle turn_180;
@@ -458,6 +523,7 @@ public:
 
 
 		vision = false;
+		turn_180 = false;
 		gyro->Reset();
 		change = 0;
 		led->Disable();
@@ -478,7 +544,6 @@ public:
 		}
 	}
 
-	float gyroTarget = 0;
 	Toggle PID;
 	float last_val = 0;
 
@@ -488,27 +553,12 @@ public:
 //		SmartDashboard::PutNumber("bl encoder", blencoder.GetRate());
 //		SmartDashboard::PutNumber("fr encoder", frencoder.GetRate());
 //		SmartDashboard::PutNumber("br encoder", brencoder.GetRate());
-
-
-//		if (pilot->LeftY() > 0.5) {
-//			times_ran ++;
-//			raw_total += flencoder.GetRate();
-//			SmartDashboard::PutNumber("rate average", raw_total/ times_ran);
-//		}
-//		else {
-//			times_ran = 0;
-//			raw_total = 0;
-//		}
-
-
-
-
 		float angle = gyro->GetAngle() - change;
 		turnController.gyro_angle = angle;
 		//DigitalLED::Color color1 {DigitalLED::Lime};
 		//DigitalLED::Color color2 {DigitalLED::Lime};
 		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
-		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL*3);
+		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL );
 		float turn = value(pilot->RightX()/2);
 
 		SmartDashboard::PutNumber("value turn", value(pilot->RightX()));
@@ -540,18 +590,20 @@ public:
 		doA180(turn_180);
 
 		SmartDashboard::PutBoolean("180 turn",turn_180);
-
 		SmartDashboard::PutNumber("adjusted angle", angle);
 
-		float final_turn =  Lib830::accel(prev_turn, turn, 5);
+		//float final_turn =  Lib830::accel(prev_turn, turn, 5);
 
 		//encoderDrive->DriveCarties(x_speed, y_speed, final_turn, 0);
 
-		drive->DriveCartesian(x_speed, y_speed, final_turn, -gyro_read);
+		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
+		//testDrive->DriveCartes(x_speed, y_speed, turn, -gyro_read);
+
+
 
 		prev_y_speed = y_speed;
 		prev_x_speed = x_speed;
-		prev_turn = final_turn;
+		//prev_turn = final_turn;
 
 		SmartDashboard::PutNumber("gyro read", gyro_read);
 		SmartDashboard::PutBoolean("field orient", field_orient);
@@ -589,6 +641,9 @@ public:
 		}
 
 		intake->update();
+
+
+
 
 		//led->Set(DigitalLED::AliceBlue);
 
@@ -656,7 +711,12 @@ public:
 		else
 			led->Set(0,0,0);
 
+		SmartDashboard::PutNumber("raw", flencoder->GetRaw());
+		SmartDashboard::PutNumber("get distance", distance);
+
 	}
+
+
 
 };
 

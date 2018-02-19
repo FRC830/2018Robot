@@ -17,7 +17,7 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 
 	pid = new PIDController(p, i, d, pot, armMotor);
 	pid->SetInputRange(0,275); //subject to change
-	pid->SetOutputRange(-1.0, 1.0);
+	pid->SetOutputRange(-0.5, 0.5);
 	pid->SetAbsoluteTolerance(5);
 	pid->SetPID(p,i,d);
 	pid->SetSetpoint(setPoints[pos]);
