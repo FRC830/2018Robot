@@ -39,7 +39,7 @@ private:
 	const std::string autoNameCustom = "My Auto";
 	std::string autoSelected; */
 
-	enum AutoMode {NOTHING, CENTER, LEFT, RIGHT, STRAIGHT};
+	enum AutoMode {NOTHING, CENTER = 2, LEFT = -1, RIGHT = 1, STRAIGHT = 3};
 
 public:
 	static const int FRONT_LEFT_PWM = 4; //real
@@ -195,13 +195,6 @@ public:
 
 	}
 
-
-
-	float StrafeVisionCorrect(){
-		float midx = SmartDashboard::GetNumber("mid point x", 160);
-		return (midx-160)/160;
-	}
-
 	void RobotInit() {
 		/*chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
@@ -222,13 +215,6 @@ public:
 
 		gyro->Calibrate();
 		gyro->Reset();
-
-		/*SmartDashboard::PutNumber("hue min", 60);
-		SmartDashboard::PutNumber("hue max", 108);
-		SmartDashboard::PutNumber("sat min", 131);
-		SmartDashboard::PutNumber("sat max", 255);
-		SmartDashboard::PutNumber("lum min", 140);
-		SmartDashboard::PutNumber("lum max", 220);*/
 
 		led = new DigitalLED(new DigitalOutput(RED_LED_DIO), new DigitalOutput(GREEN_LED_DIO), new DigitalOutput(BLUE_LED_DIO));
 		std::thread visionThread(CameraPeriodic);
@@ -327,16 +313,32 @@ public:
 
 
 		float pulse_per_rev = SmartDashboard::GetNumber("pulse per rev", 1024.0);
+		float dis_per_pulse = (6*3.1416)/pulse_per_rev;
 
-		flencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
-		blencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
-		frencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
-		brencoder->SetDistancePerPulse((6*3.1416)/pulse_per_rev);
+		flencoder->SetDistancePerPulse(dis_per_pulse);
+		blencoder->SetDistancePerPulse(dis_per_pulse);
+		frencoder->SetDistancePerPulse(dis_per_pulse);
+		brencoder->SetDistancePerPulse(dis_per_pulse);
 
 
 
 	}
-
+	float mesToConstant(char mes) {
+		switch(mes) {
+			case 'L':
+				return -1;
+				break;
+			case 'R':
+				return 1;
+				break;
+			default:
+				return 0;
+		}
+	}
+	float StrafeVisionCorrect(){
+		float midx = SmartDashboard::GetNumber("mid point x", 160);
+		return (midx-160)/160;
+	}
 	float getXSpeed (float target_speed, float default_speed) {
 		if (target_speed) {
 			if(!acquired) {
@@ -354,24 +356,24 @@ public:
 		}
 	}
 
+	double yScaleSpeed(float cur_dist, float final_dist, float mes) {
+		if (cur_dist < final_dist) {
+			return (final_dist - cur_dist)/ ( mes * 50);
+		}
+		else {
+			return 0;
+		}
+	}
 	float prev_y_speed = 0;
-
 	float prev_x_speed = 0;
-	bool output_cube = false;
-
-	float CORRECT_SIDE_SCALE_DIST = 305;
+	bool output_cube = true;
+	float SCALE_DIST = 305;
 	float distance = 0;
-	float start_time = 0;
-
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
 		SmartDashboard::PutString("message", message);
-		char mes = message[0];
-		char mes_2 = message[1];
-		cout << "first character: " << mes << endl;
-		cout << "second character: " << mes_2 << endl;
-
-
+		float mes = mesToConstant(message[0]);
+		float mes_2 = mesToConstant(message[1]);
 
 		AutoMode mode = NOTHING;
 		if (chooser->GetSelected()) {
@@ -395,73 +397,69 @@ public:
 		else if (time > 1 && time < 8) {
 			y_speed = 0.3;
 			arm->toSwitch();
+			static bool to_scale = false;
 
 			if (acquired) {
 				y_speed = 0.3; //set speed to be slower
 			}
 			switch(mode) {
 			case CENTER:
-				output_cube = true;
-				if (mes == 'L') {
-					x_speed = getXSpeed(StrafeVisionCorrect(), -0.7);
-				}
-				else if (mes == 'R') {
-					x_speed = getXSpeed(StrafeVisionCorrect(), 0.7);
-				}
+					x_speed = getXSpeed(StrafeVisionCorrect(), mes* 0.7);
 				break;
 			case RIGHT:
-				if (mes == 'L') {
-					x_speed = getXSpeed(StrafeVisionCorrect(), -0.2);
-					if (acquired && StrafeVisionCorrect() < 5) {//
-						start_time = time;
-						x_speed = 0.5;
-						acquired = false;
-
-					}
-					else if (!acquired && start_time) {
-						x_speed = 0.5;
-						SmartDashboard::PutNumber("start time", time - start_time);
-						if (time - start_time > 0.5) {
-							x_speed = 0;
-
-							if (mes_2 == 'R') {
-								if (distance < CORRECT_SIDE_SCALE_DIST) {
-									y_speed = (CORRECT_SIDE_SCALE_DIST - distance)/50;
-									if (time- start_time > 1.25) {
-										x_speed = -0.8;
-									}
-								}
-								else {
-									y_speed = 0;
-								}
-							}
-							else if (mes_2 == 'L') {
-								/*do stuff*/
-							}
-						}
-					}
-				}
-				else if (mes == 'R') {
+				if (RIGHT == mes ) {
 					x_speed = getXSpeed(StrafeVisionCorrect(), 0);
-					output_cube = true;
+				}
+				else {
+					to_scale = true;
 				}
 				break;
 			case LEFT:
-				if (mes == 'L') {
+				if (LEFT == mes) {
 					x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
-					output_cube = true;
 				}
-				else if (mes == 'R') {
-					x_speed = 0;
+				else {
+					to_scale = true;
 				}
 				break;
 			case STRAIGHT:
-				break;
 			default:
 				x_speed = 0;
 				y_speed = 0;
 				rot = 0;
+				output_cube = false;
 				break;
+			}
+		if (to_scale) {
+			static float seen_target_time = 0;
+			mes = -mes;
+				x_speed = getXSpeed(StrafeVisionCorrect(), mes * -0.2);
+				if (acquired && fabs(StrafeVisionCorrect()) < 0.03125) {//
+					seen_target_time = time;
+					x_speed = mes * 0.5;
+					acquired = false;
+				}
+				else if (!acquired && seen_target_time) {
+					x_speed = mes * 0.5;
+					float change_in_time = time - seen_target_time;
+					SmartDashboard::PutNumber("start time", change_in_time);
+					if (change_in_time > 0.5) {
+						y_speed = yScaleSpeed(distance, SCALE_DIST, mes);
+						float scale_strafe_max_time = 0;
+						if (mes_2 != -mes) { //time of x
+							scale_strafe_max_time = 2.25;
+						}
+						else if (mes_2 == -mes) {
+							scale_strafe_max_time = 5.25;
+						} //xspeed
+						if (change_in_time > 1.25 && change_in_time < scale_strafe_max_time) {
+							x_speed = mes* -0.8;
+						}
+						else {
+							x_speed = 0;
+						}
+					}
+				}
 			}
 		}
 		else if (time > 8 && time < 12) {
@@ -510,8 +508,6 @@ public:
 	Toggle turn_180;
 
 	float change = 0;
-	int times_ran = 0;
-	float raw_total = 0;
 
 	void TeleopInit() {
 		turnPID.SetInputRange(0,360);
@@ -535,7 +531,7 @@ public:
 
 	Toggle field_orient;
 
-	float value(float input) {
+	float deadZone(float input) {
 		if (fabs(input) < 0.13) {
 			return 0;
 		}
@@ -545,8 +541,8 @@ public:
 	}
 
 	Toggle PID;
-	float last_val = 0;
-
+	Toggle up;
+	Toggle down;
 
 	void TeleopPeriodic() override {
 //		SmartDashboard::PutNumber("fl encoder", flencoder.GetRate());
@@ -555,29 +551,26 @@ public:
 //		SmartDashboard::PutNumber("br encoder", brencoder.GetRate());
 		float angle = gyro->GetAngle() - change;
 		turnController.gyro_angle = angle;
-		//DigitalLED::Color color1 {DigitalLED::Lime};
-		//DigitalLED::Color color2 {DigitalLED::Lime};
-		float y_speed = Lib830::accel(prev_y_speed, value(pilot->LeftY()), TICKS_TO_ACCEL);
-		float x_speed = Lib830::accel(prev_x_speed, value(pilot->LeftX()), TICKS_TO_ACCEL );
-		float turn = value(pilot->RightX()/2);
+		DigitalLED::Color color1 {DigitalLED::Lime};
+		DigitalLED::Color color2 {DigitalLED::Lime};
+		float y_speed = Lib830::accel(prev_y_speed, deadZone(pilot->LeftY()), TICKS_TO_ACCEL);
+		float x_speed = Lib830::accel(prev_x_speed, deadZone(pilot->LeftX()), TICKS_TO_ACCEL );
+		float turn = deadZone(pilot->RightX()/2);
 
-		SmartDashboard::PutNumber("value turn", value(pilot->RightX()));
+		SmartDashboard::PutNumber("value turn", deadZone(pilot->RightX()));
 		float gyro_read = 0;
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
-			//color1 = DigitalLED::Magenta;
-			led->Set(0,0,0);
+			color1 = DigitalLED::Magenta;
 			gyro_read = gyro->GetAngle();
 		}
-		else {
-			led->Set(1,0,1);
-		}
+
 
 		SmartDashboard::PutBoolean("gyro correct", gyroCorrect);
 
 		if (gyroCorrect.toggle(pilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
 			turn = turnController.turn;
-			gyroTarget += 2*value(pilot->RightX());
+			gyroTarget += 2*deadZone(pilot->RightX());
 			if (gyroTarget < 360){
 				gyroTarget += 360;
 			}
@@ -597,17 +590,14 @@ public:
 		//encoderDrive->DriveCarties(x_speed, y_speed, final_turn, 0);
 
 		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
-		//testDrive->DriveCartes(x_speed, y_speed, turn, -gyro_read);
-
 
 
 		prev_y_speed = y_speed;
 		prev_x_speed = x_speed;
-		//prev_turn = final_turn;
 
 		SmartDashboard::PutNumber("gyro read", gyro_read);
 		SmartDashboard::PutBoolean("field orient", field_orient);
-		SmartDashboard::PutNumber("Left y", value(pilot->LeftY()));
+		SmartDashboard::PutNumber("Left y", deadZone(pilot->LeftY()));
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
 
@@ -620,12 +610,12 @@ public:
 		up.toggle(copilot->RightTrigger());
 		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
-			//color2 = DigitalLED::Cyan;
+			color2 = DigitalLED::Cyan;
 		}
 		else {
 			if (copilot->ButtonState(GamepadF310::BUTTON_RIGHT_BUMPER) || copilot->ButtonState(GamepadF310::BUTTON_LEFT_BUMPER) ) {
 				arm->manualPosition(copilot->RightTrigger(),copilot->LeftTrigger());
-				//color2 = DigitalLED::Yellow;
+				color2 = DigitalLED::Yellow;
 			}
 			else {
 				arm->automaticPosition(up, down);
@@ -653,7 +643,7 @@ public:
 		//lw->Run();
 	}
 	void DisabledPeriodic() {
-		//drive->DriveCartesian(0,0,0);
+		drive->DriveCartesian(0,0,0);
 		//led->RainbowFade(10);
 		//led->Set(1,1,1);
 
@@ -661,26 +651,6 @@ public:
 		//led->Alternate({1,0.7,0}, {0,0,1});
 
 
-	}
-//#define PI 3.141592
-
-	int pos = 0;
-	Toggle up;
-	Toggle down;
-
-	void armMove(Toggle &up, Toggle &down, int &position) {
-		if (up) {
-			if (position < 4) {
-				position++;
-			}
-			up = false;
-		}
-		else if (down) {
-			if (position > 0) {
-				position--;
-			}
-			down = false;
-		}
 	}
 
 	void RobotPeriodic() override {
