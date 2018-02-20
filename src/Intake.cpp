@@ -31,20 +31,20 @@ void Intake::stop() {
 }
 
 void Intake::update() {
-	float intakeSpeed = 0.5;
-	float outputSpeed = -0.5;
+	float intakeSpeed = 1.0;
+	float outputSpeed = -1.0;
 	float time = timer.Get();
-	if (time > 1.0) {
+	if (time > 0.25) {
 		intakeMode = NOTHING;
 	}
 	switch (intakeMode) {
 	case INTAKE:
 		leftMotor->Set(intakeSpeed);
-		rightMotor->Set(-intakeSpeed);
+		rightMotor->Set(intakeSpeed);
 		break;
 	case OUTPUT:
 		leftMotor->Set(outputSpeed);
-		rightMotor->Set(-outputSpeed);
+		rightMotor->Set(outputSpeed);
 		break;
 	default:
 		leftMotor->Set(0);

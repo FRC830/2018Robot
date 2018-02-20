@@ -42,8 +42,8 @@ private:
 	enum AutoMode {NOTHING, CENTER = 2, LEFT = -1, RIGHT = 1, STRAIGHT = 3};
 
 public:
-	static const int FRONT_LEFT_PWM = 4; //real
-	static const int BACK_LEFT_PWM = 9; //real
+	static const int FRONT_LEFT_PWM = 6; //real
+	static const int BACK_LEFT_PWM = 7; //real
 	static const int FRONT_RIGHT_PWM = 0; //real
 	static const int BACK_RIGHT_PWM = 1; //real
 
@@ -53,11 +53,11 @@ public:
 //	static const int BACK_RIGHT_PWM = 2; //practice
 
 
-	static const int LEFT_INTAKE_PWM = 5; //subject to choonge
-	static const int RIGHT_INTAKE_PWM = 6;
+	static const int LEFT_INTAKE_PWM = 3; //subject to choonge
+	static const int RIGHT_INTAKE_PWM = 4;
 
-	static const int ARM_PWM = 8;
-
+	static const int ARM_PWM = 9;
+	static const int CLIMBER_PWM = 2;
 
 	static const int RED_LED_DIO = 9;
 	static const int GREEN_LED_DIO = 24;
@@ -337,7 +337,7 @@ public:
 	}
 	float StrafeVisionCorrect(){
 		float midx = SmartDashboard::GetNumber("mid point x", 160);
-		return (midx-160)/160;
+		return ((midx-160)/160) /2;
 	}
 	float getXSpeed (float target_speed, float default_speed) {
 		if (target_speed) {
@@ -356,9 +356,9 @@ public:
 		}
 	}
 
-	double yScaleSpeed(float cur_dist, float final_dist, float mes) {
+	double yScaleSpeed(float cur_dist, float final_dist) {
 		if (cur_dist < final_dist) {
-			return (final_dist - cur_dist)/ ( mes * 50);
+			return (final_dist - cur_dist)/ 50;
 		}
 		else {
 			return 0;
@@ -375,30 +375,38 @@ public:
 		float mes = mesToConstant(message[0]);
 		float mes_2 = mesToConstant(message[1]);
 
+
 		AutoMode mode = NOTHING;
 		if (chooser->GetSelected()) {
 			mode = *chooser->GetSelected();
 		}
 
+		cout << "mes: " << mes <<endl;
+		cout << "mode: " << mode <<endl;
 		float x_speed = 0;
 		float y_speed = 0;
 		float angle = gyro->GetAngle();
 		float rot = angle/-30;
+
+		bool to_scale = false;
 
 
 		float time = timer.Get();
 
 		distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
 
-		if (time < 1) {
+		cout << "acquired: " << acquired <<endl;
+		cout << StrafeVisionCorrect() <<endl;
+		if (time < 1 && mode !=NOTHING) {
 			y_speed = 0.5;
+//			if (mode == LEFT && LEFT == mes) {
+//				x_speed = 0.5;
+//			}
 		}
 
 		else if (time > 1 && time < 8) {
 			y_speed = 0.3;
 			arm->toSwitch();
-			static bool to_scale = false;
-
 			if (acquired) {
 				y_speed = 0.3; //set speed to be slower
 			}
@@ -416,7 +424,8 @@ public:
 				break;
 			case LEFT:
 				if (LEFT == mes) {
-					x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
+					//y_speed = 0.2;
+					x_speed = getXSpeed(StrafeVisionCorrect(), 0.8);
 				}
 				else {
 					to_scale = true;
@@ -430,37 +439,6 @@ public:
 				output_cube = false;
 				break;
 			}
-		if (to_scale) {
-			static float seen_target_time = 0;
-			mes = -mes;
-				x_speed = getXSpeed(StrafeVisionCorrect(), mes * -0.2);
-				if (acquired && fabs(StrafeVisionCorrect()) < 0.03125) {//
-					seen_target_time = time;
-					x_speed = mes * 0.5;
-					acquired = false;
-				}
-				else if (!acquired && seen_target_time) {
-					x_speed = mes * 0.5;
-					float change_in_time = time - seen_target_time;
-					SmartDashboard::PutNumber("start time", change_in_time);
-					if (change_in_time > 0.5) {
-						y_speed = yScaleSpeed(distance, SCALE_DIST, mes);
-						float scale_strafe_max_time = 0;
-						if (mes_2 != -mes) { //time of x
-							scale_strafe_max_time = 2.25;
-						}
-						else if (mes_2 == -mes) {
-							scale_strafe_max_time = 5.25;
-						} //xspeed
-						if (change_in_time > 1.25 && change_in_time < scale_strafe_max_time) {
-							x_speed = mes* -0.8;
-						}
-						else {
-							x_speed = 0;
-						}
-					}
-				}
-			}
 		}
 		else if (time > 8 && time < 12) {
 			x_speed = 0;
@@ -471,11 +449,56 @@ public:
 			}
 		}
 
+		if (to_scale) {
+			cout << "seen targ: " << time << endl;
+			mes = -mes;
+					if (mode == LEFT) {
+						x_speed = -0.5;
+					}
+					else {
+						x_speed = 1.0;
+					}
+					SmartDashboard::PutNumber("start time", time);
+					if (time > 1.75) {
+						y_speed = yScaleSpeed(distance, SCALE_DIST);
+
+						float scale_strafe_max_time = 0;
+						float scale_strafe_min_time = 0;
+
+						if (mode == LEFT) {
+							scale_strafe_min_time = 2.25;
+							if (mes_2 != -mes) {
+								scale_strafe_max_time = 3.55;
+							}
+							else if (mes_2 == -mes) {
+								scale_strafe_max_time = 5.25;
+							}
+						}
+						else if (mode == RIGHT){
+							scale_strafe_min_time = 3.75;
+							if (mes_2 != -mes) {
+								scale_strafe_max_time = 5.25;
+							}
+							else if (mes_2 == -mes) {
+								scale_strafe_max_time = 6.75;
+							}
+						}
+						//xspeed
+						if (time > scale_strafe_min_time && time < scale_strafe_max_time) {
+							x_speed = mes* -0.8;
+						}
+						else {
+							x_speed = 0;
+						}
+					}
+				}
+			//}
+
 		SmartDashboard::PutNumber("get distance", distance);
 		SmartDashboard::PutNumber("raw", flencoder->GetRaw());
 
 
-		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
+		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL/2);
 		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
 		drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
@@ -522,6 +545,7 @@ public:
 		turn_180 = false;
 		gyro->Reset();
 		change = 0;
+		gyroTarget = 0;
 		led->Disable();
 
 	}
@@ -578,6 +602,7 @@ public:
 		}
 		else  {
 			change = gyro->GetAngle();
+			gyroTarget = 0;
 		}
 		turn_180.toggle(pilot->DPadLeft());
 		doA180(turn_180);
@@ -589,7 +614,7 @@ public:
 
 		//encoderDrive->DriveCarties(x_speed, y_speed, final_turn, 0);
 
-		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
+		drive->DriveCartesian(x_speed, -y_speed, turn, -gyro_read);
 
 
 		prev_y_speed = y_speed;
@@ -609,7 +634,7 @@ public:
 		down.toggle(copilot->LeftTrigger());
 		up.toggle(copilot->RightTrigger());
 		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
-			arm->rawPosition(copilot->RightTrigger()-copilot->LeftTrigger());
+			arm->rawPosition(copilot->RightTrigger()-(copilot->LeftTrigger()*0.7));
 			color2 = DigitalLED::Cyan;
 		}
 		else {
