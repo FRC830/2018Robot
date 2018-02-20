@@ -323,18 +323,7 @@ public:
 
 
 	}
-	float mesToConstant(char mes) {
-		switch(mes) {
-			case 'L':
-				return -1;
-				break;
-			case 'R':
-				return 1;
-				break;
-			default:
-				return 0;
-		}
-	}
+
 	float StrafeVisionCorrect(){
 		float midx = SmartDashboard::GetNumber("mid point x", 160);
 		return ((midx-160)/160) /2;
@@ -356,14 +345,6 @@ public:
 		}
 	}
 
-	double yScaleSpeed(float cur_dist, float final_dist) {
-		if (cur_dist < final_dist) {
-			return (final_dist - cur_dist)/ 50;
-		}
-		else {
-			return 0;
-		}
-	}
 	float prev_y_speed = 0;
 	float prev_x_speed = 0;
 	bool output_cube = true;
@@ -371,149 +352,139 @@ public:
 	float distance = 0;
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
-		SmartDashboard::PutString("message", message);
-		float mes = mesToConstant(message[0]);
-		float mes_2 = mesToConstant(message[1]);
+				SmartDashboard::PutString("message", message);
+				char mes = message[0];
+				char mes_2 = message[1];
+				cout << "first character: " << mes << endl;
+				cout << "second character: " << mes_2 << endl;
 
 
-		AutoMode mode = NOTHING;
-		if (chooser->GetSelected()) {
-			mode = *chooser->GetSelected();
-		}
 
-		cout << "mes: " << mes <<endl;
-		cout << "mode: " << mode <<endl;
-		float x_speed = 0;
-		float y_speed = 0;
-		float angle = gyro->GetAngle();
-		float rot = angle/-30;
-
-		bool to_scale = false;
-
-
-		float time = timer.Get();
-
-		distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
-
-		cout << "acquired: " << acquired <<endl;
-		cout << StrafeVisionCorrect() <<endl;
-		if (time < 1 && mode !=NOTHING) {
-			y_speed = 0.5;
-//			if (mode == LEFT && LEFT == mes) {
-//				x_speed = 0.5;
-//			}
-		}
-
-		else if (time > 1 && time < 8) {
-			y_speed = 0.3;
-			arm->toSwitch();
-			if (acquired) {
-				y_speed = 0.3; //set speed to be slower
-			}
-			switch(mode) {
-			case CENTER:
-					x_speed = getXSpeed(StrafeVisionCorrect(), mes* 0.7);
-				break;
-			case RIGHT:
-				if (RIGHT == mes ) {
-					x_speed = getXSpeed(StrafeVisionCorrect(), 0);
+				AutoMode mode = NOTHING;
+				if (chooser->GetSelected()) {
+					mode = *chooser->GetSelected();
 				}
-				else {
-					to_scale = true;
-				}
-				break;
-			case LEFT:
-				if (LEFT == mes) {
-					//y_speed = 0.2;
-					x_speed = getXSpeed(StrafeVisionCorrect(), 0.8);
-				}
-				else {
-					to_scale = true;
-				}
-				break;
-			case STRAIGHT:
-			default:
-				x_speed = 0;
-				y_speed = 0;
-				rot = 0;
-				output_cube = false;
-				break;
-			}
-		}
-		else if (time > 8 && time < 12) {
-			x_speed = 0;
-			y_speed = 0;
-			rot = 0;
-			if(output_cube){
-				intake->toOutput();
-			}
-		}
 
-		if (to_scale) {
-			cout << "seen targ: " << time << endl;
-			mes = -mes;
-					if (mode == LEFT) {
-						x_speed = -0.5;
+				float x_speed = 0;
+				float y_speed = 0;
+				float angle = gyro->GetAngle();
+				float rot = angle/-30;
+
+
+				float time = timer.Get();
+
+				distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
+				float scale_distance = 0;
+
+				if (time < 1) {
+					y_speed = 0.5;
+					scale_distance = distance;
+				}
+
+				else if (time > 1 && time < 8) {
+					y_speed = 0.3;
+					arm->toSwitch();
+
+					if (acquired) {
+						y_speed = 0.3; //set speed to be slower
 					}
-					else {
-						x_speed = 1.0;
-					}
-					SmartDashboard::PutNumber("start time", time);
-					if (time > 1.75) {
-						y_speed = yScaleSpeed(distance, SCALE_DIST);
+					switch(mode) {
+					case CENTER:
+						output_cube = true;
+						if (mes == 'L') {
+							x_speed = getXSpeed(StrafeVisionCorrect(), -0.7);
+						}
+						else if (mes == 'R') {
+							x_speed = getXSpeed(StrafeVisionCorrect(), 0.7);
+						}
+						break;
+					case RIGHT:
+						if (mes == 'L') {
+							if (distance < SCALE_DIST) {
+								y_speed = (SCALE_DIST - distance)/70;
+							} // y speed
+							if (distance < 168) /* to change */{
+								x_speed = 0.5;
+							}
+							else if (distance < 210) {
+								x_speed = 0;
+							}//to go around switch
+							else if (distance < 270 || (mes_2 == 'L' && distance< 290)) {
+								if (mes_2 == 'R') {
+									x_speed = -0.5;
+								}
+								else if (mes_2 == 'L') {
+									if (distance < 290) {
+										y_speed = 0.1;
+										x_speed = -0.8;
+									}
+								}
+							}
+							else {
+								x_speed = 0;
+							}
+						}
 
-						float scale_strafe_max_time = 0;
-						float scale_strafe_min_time = 0;
-
-						if (mode == LEFT) {
-							scale_strafe_min_time = 2.25;
-							if (mes_2 != -mes) {
-								scale_strafe_max_time = 3.55;
-							}
-							else if (mes_2 == -mes) {
-								scale_strafe_max_time = 5.25;
-							}
+						else if (mes == 'R') {
+							x_speed = getXSpeed(StrafeVisionCorrect(), 0);
+							output_cube = true;
 						}
-						else if (mode == RIGHT){
-							scale_strafe_min_time = 3.75;
-							if (mes_2 != -mes) {
-								scale_strafe_max_time = 5.25;
-							}
-							else if (mes_2 == -mes) {
-								scale_strafe_max_time = 6.75;
-							}
+						break;
+					case LEFT:
+						if (mes == 'L') {
+							x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
+							output_cube = true;
 						}
-						//xspeed
-						if (time > scale_strafe_min_time && time < scale_strafe_max_time) {
-							x_speed = mes* -0.8;
-						}
-						else {
+						else if (mes == 'R') {
 							x_speed = 0;
+							if (distance < SCALE_DIST) {
+								y_speed = (SCALE_DIST - distance)/70;
+							}
+							if (mes_2 == 'R') {
+								if (distance > 210 && distance < 290) { //distances are arbritrary rn
+									x_speed = 0.8;
+								}
+							}
 						}
+						break;
+					case STRAIGHT:
+						break;
+					default:
+						x_speed = 0;
+						y_speed = 0;
+						rot = 0;
+						break;
 					}
 				}
-			//}
+				else if (time > 8 && time < 12) {
+					x_speed = 0;
+					y_speed = 0;
+					rot = 0;
+					if(output_cube){
+						intake->toOutput();
+					}
+				}
 
-		SmartDashboard::PutNumber("get distance", distance);
-		SmartDashboard::PutNumber("raw", flencoder->GetRaw());
+				SmartDashboard::PutNumber("get distance", distance);
+				SmartDashboard::PutNumber("raw", flencoder->GetRaw());
 
 
-		float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL/2);
-		float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
+				float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
+				float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 
-		drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
-		arm->armMoveUpdate();
-		intake->update();
+				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
+				arm->armMoveUpdate();
+				intake->update();
 
-		SmartDashboard::PutNumber("x speed", f_x_speed);
-		SmartDashboard::PutNumber("y speed", f_y_speed);
-		SmartDashboard::PutNumber("rot", rot);
-		SmartDashboard::PutNumber("angle", angle);
-		SmartDashboard::PutBoolean("acquired", acquired);
+				SmartDashboard::PutNumber("x speed", f_x_speed);
+				SmartDashboard::PutNumber("y speed", f_y_speed);
+				SmartDashboard::PutNumber("rot", rot);
+				SmartDashboard::PutNumber("angle", angle);
+				SmartDashboard::PutBoolean("acquired", acquired);
 
-		prev_x_speed = f_x_speed;
-		prev_y_speed = f_y_speed;
-		//comment
+				prev_x_speed = f_x_speed;
+				prev_y_speed = f_y_speed;
+				//comment
 
 	}
 
