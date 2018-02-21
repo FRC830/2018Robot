@@ -95,6 +95,7 @@ public:
 	VictorSP bl;
 	VictorSP fr;
 	VictorSP br;
+	VictorSP climber;
 	Timer timer;
 
 	TurnController turnController;
@@ -129,6 +130,7 @@ public:
 			bl(BACK_LEFT_PWM),
 			fr(FRONT_RIGHT_PWM),
 			br(BACK_RIGHT_PWM),
+			climber(CLIMBER_PWM),
 			turnPID(1/80.0, 0.0, 0.05, turnController,turnController,0.02),
 			gyroCorrect(true)
 
@@ -261,6 +263,7 @@ public:
 		);
 
 
+
 		turnPID.SetName("turn PID");
 		SmartDashboard::PutData(&turnPID);
 
@@ -374,23 +377,21 @@ public:
 				float time = timer.Get();
 
 				distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
-				float scale_distance = 0;
 
 				if (time < 1) {
 					y_speed = 0.5;
-					scale_distance = distance;
+					arm->toSwitch();
 				}
 
 				else if (time > 1 && time < 8) {
 					y_speed = 0.3;
-					arm->toSwitch();
+					//arm->toSwitch();
 
 					if (acquired) {
 						y_speed = 0.3; //set speed to be slower
 					}
 					switch(mode) {
 					case CENTER:
-						output_cube = true;
 						if (mes == 'L') {
 							x_speed = getXSpeed(StrafeVisionCorrect(), -0.7);
 						}
@@ -402,6 +403,7 @@ public:
 						if (mes == 'L') {
 							if (distance < SCALE_DIST) {
 								y_speed = (SCALE_DIST - distance)/70;
+								arm->toScale();
 							} // y speed
 							if (distance < 168) /* to change */{
 								x_speed = 0.5;
@@ -433,23 +435,26 @@ public:
 					case LEFT:
 						if (mes == 'L') {
 							x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
-							output_cube = true;
 						}
 						else if (mes == 'R') {
 							x_speed = 0;
+							arm->toScale();
 							if (distance < SCALE_DIST) {
 								y_speed = (SCALE_DIST - distance)/70;
 							}
 							if (mes_2 == 'R') {
 								if (distance > 210 && distance < 290) { //distances are arbritrary rn
 									x_speed = 0.8;
+
 								}
 							}
 						}
 						break;
 					case STRAIGHT:
+						output_cube = false;
 						break;
 					default:
+						output_cube = false;
 						x_speed = 0;
 						y_speed = 0;
 						rot = 0;
@@ -519,6 +524,11 @@ public:
 		gyroTarget = 0;
 		led->Disable();
 
+		flencoder->Reset();
+		blencoder->Reset();
+		frencoder->Reset();
+		brencoder->Reset();
+
 	}
 
 
@@ -536,8 +546,7 @@ public:
 	}
 
 	Toggle PID;
-	Toggle up;
-	Toggle down;
+
 
 	void TeleopPeriodic() override {
 //		SmartDashboard::PutNumber("fl encoder", flencoder.GetRate());
@@ -564,6 +573,7 @@ public:
 		SmartDashboard::PutBoolean("gyro correct", gyroCorrect);
 
 		if (gyroCorrect.toggle(pilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
+			color1 = DigitalLED::White;
 			turn = turnController.turn;
 			gyroTarget += 2*deadZone(pilot->RightX());
 			if (gyroTarget < 360){
@@ -621,6 +631,9 @@ public:
 
 		if(copilot->ButtonState(GamepadF310::BUTTON_Y)){
 			intake->toIntake();
+			if (copilot->ButtonState(GamepadF310::BUTTON_A)) {
+				intake->toAdjust();
+			}
 		}
 		else if(copilot->ButtonState(GamepadF310::BUTTON_X)){
 			intake->toOutput();
@@ -628,12 +641,23 @@ public:
 
 		intake->update();
 
+		if(copilot->DPadUp()){
+			climber.Set(1);
+		}
+		else{
+			climber.Set(0);
+		}
+
+
 
 
 
 		//led->Set(DigitalLED::AliceBlue);
 
 	}
+
+	Toggle up;
+	Toggle down;
 
 	void TestPeriodic() {
 		//lw->Run();

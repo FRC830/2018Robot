@@ -26,18 +26,28 @@ void Intake::toOutput() {
 	intakeMode = OUTPUT;
 }
 
+void Intake::toAdjust() {
+	intakeMode = ADJUST;
+}
+
 void Intake::stop() {
 	intakeMode = NOTHING;
 }
 
+//void Intake::toAdjust()
+
 void Intake::update() {
 	float intakeSpeed = 1.0;
-	float outputSpeed = -1.0;
+	float outputSpeed = -0.75;
 	float time = timer.Get();
 	if (time > 0.25) {
 		intakeMode = NOTHING;
 	}
 	switch (intakeMode) {
+	case ADJUST:
+		leftMotor->Set(intakeSpeed);
+		rightMotor->Set(-intakeSpeed/2);
+		break;
 	case INTAKE:
 		leftMotor->Set(intakeSpeed);
 		rightMotor->Set(intakeSpeed);

@@ -35,13 +35,15 @@ private:
 	bool up;
 	bool down;
 	float speed;
+	float prev_speed = 0;
+	static const int TICKS_TO_ACCEL = 15;
 
 	bool toManual;
 	bool toAutomatic;
 	int pos;
 	float p,i,d;
 
-	std::vector<double> setPoints = {0,180,200,230,250, 0};
+	std::vector<double> setPoints = {50, 55,180,200,230,250, 0};
 	enum setPoint {DOWN, INTAKE, SWITCH, SCALE_LOW, SCALE_MID, SCALE_HIGH, MANUAL };
 	enum State {RAW, PID};
 	State state;

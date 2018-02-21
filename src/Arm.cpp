@@ -16,7 +16,7 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 	speed = 0;
 
 	pid = new PIDController(p, i, d, pot, armMotor);
-	pid->SetInputRange(0,275); //subject to change
+	pid->SetInputRange(0,270); //subject to change
 	pid->SetOutputRange(-1.0, 1.0);
 	pid->SetAbsoluteTolerance(5);
 	pid->SetPID(p,i,d);
@@ -55,13 +55,13 @@ void Arm::automaticPosition(Toggle &button_up, Toggle &button_down) {
 	down = button_down;
 	state = PID;
 	if (up) {
-		if (pos < 5) {
+		if (pos < 260) {
 			pos++;
 		}
 		button_up = false;
 	}
 	else if (down) {
-		if (pos > 0) {
+		if (pos > 5) {
 			pos--;
 		}
 		button_down = false;
@@ -81,8 +81,8 @@ void Arm::manualPosition(float button_up, float button_down) {
 		toManual = true;
 	}
 
-	if (manual_pos > 45 && manual_pos < 250) {
-		manual_pos = manual_pos + (change * -1); //subject to change
+	if (manual_pos > 0 && manual_pos < 250) {
+		manual_pos = manual_pos + (change * 1); //subject to change
 		setPoints[6] = manual_pos;
 	}
 
@@ -90,7 +90,10 @@ void Arm::manualPosition(float button_up, float button_down) {
 }
 
 void Arm::rawPosition(float speed){
-	this->speed=speed;
+	float cur_speed = Lib830::accel(prev_speed, speed, TICKS_TO_ACCEL);
+	SmartDashboard::PutNumber("cur arm manual speed", cur_speed);
+	this->speed = cur_speed;
+	prev_speed = cur_speed;
 	state = RAW;
 }
 
@@ -108,13 +111,15 @@ void Arm::armMoveUpdate() {
 			toManual = false;
 			toAutomatic = true;
 		}
-		SmartDashboard::PutNumber("position", pos);
 		SmartDashboard::PutNumber("set point", position);
-		SmartDashboard::PutNumber("potentiometer", pot->Get());
+
 		SmartDashboard::PutBoolean("to manual", toManual);
 	}
+	SmartDashboard::PutNumber("position", pos);
 	SmartDashboard::PutNumber("raw or pid", state);
 	SmartDashboard::PutNumber("arm motor speed", armMotor->Get());
+	SmartDashboard::PutNumber("potentiometer", pot->Get());
+
 
 }
 

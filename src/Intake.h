@@ -16,11 +16,12 @@ public:
 	virtual ~Intake();
 	void toIntake();
 	void toOutput();
+	void toAdjust();
 	void update();
 	void stop();
 	Timer timer;
 private:
-	enum IntakeMode {INTAKE, OUTPUT, NOTHING};
+	enum IntakeMode {INTAKE, OUTPUT, ADJUST, NOTHING};
 	IntakeMode intakeMode;
 	VictorSP *leftMotor;
 	VictorSP *rightMotor;
