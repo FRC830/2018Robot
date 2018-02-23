@@ -55,13 +55,13 @@ void Arm::automaticPosition(Toggle &button_up, Toggle &button_down) {
 	down = button_down;
 	state = PID;
 	if (up) {
-		if (pos < 260) {
+		if (pos < 5) {
 			pos++;
 		}
 		button_up = false;
 	}
 	else if (down) {
-		if (pos > 5) {
+		if (pos > 0) {
 			pos--;
 		}
 		button_down = false;
@@ -81,7 +81,7 @@ void Arm::manualPosition(float button_up, float button_down) {
 		toManual = true;
 	}
 
-	if (manual_pos > 0 && manual_pos < 250) {
+	if (manual_pos > 5 && manual_pos < 250) {
 		manual_pos = manual_pos + (change * 1); //subject to change
 		setPoints[6] = manual_pos;
 	}
