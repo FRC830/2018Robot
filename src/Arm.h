@@ -43,7 +43,7 @@ private:
 	int pos;
 	float p,i,d;
 
-	std::vector<double> setPoints = {50, 55,180,200,230,250, 0};
+	std::vector<double> setPoints = {55, 65,120,180,200,210, 0};
 	enum setPoint {DOWN, INTAKE, SWITCH, SCALE_LOW, SCALE_MID, SCALE_HIGH, MANUAL };
 	enum State {RAW, PID};
 	State state;

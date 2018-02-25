@@ -54,8 +54,9 @@ public:
 //	static const int BACK_RIGHT_PWM = 3; //practice
 
 
-	static const int LEFT_INTAKE_PWM = 4; //practice bot
-	static const int RIGHT_INTAKE_PWM = 1; //practice bot
+	static const int LEFT_INTAKE_PWM = 4; //practice bot and real
+	static const int RIGHT_INTAKE_PWM = 3; //real bot
+//	static const int RIGHT_INTAKE_PWM = 1; //practice bot
 
 	static const int ARM_PWM = 9; //real
 //	static const int ARM_PWM = 8; //practice
@@ -384,95 +385,101 @@ public:
 				float time = timer.Get();
 
 				distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
-
-				if (time < 1) {
-					y_speed = 0.5;
-					arm->toSwitch();
-				}
-
-				else if (time > 1 && time < 8) {
-					y_speed = 0.3;
-					//arm->toSwitch();
-
-					if (acquired) {
-						y_speed = 0.3; //set speed to be slower
-					}
-					switch(mode) {
-					case CENTER:
-						if (mes == 'L') {
-							x_speed = getXSpeed(StrafeVisionCorrect(), -0.7);
-						}
-						else if (mes == 'R') {
-							x_speed = getXSpeed(StrafeVisionCorrect(), 0.7);
-						}
-						break;
-					case RIGHT:
-						if (mes == 'L') {
-							if (distance < SCALE_DIST) {
-								y_speed = (SCALE_DIST - distance)/70;
-								arm->toScale();
-							} // y speed
-							if (distance < 168) /* to change */{
-								x_speed = 0.5;
-							}
-							else if (distance < 210) {
-								x_speed = 0;
-							}//to go around switch
-							else if (distance < 270 || (mes_2 == 'L' && distance< 290)) {
-								if (mes_2 == 'R') {
-									x_speed = -0.5;
-								}
-								else if (mes_2 == 'L') {
-									if (distance < 290) {
-										y_speed = 0.1;
-										x_speed = -0.8;
-									}
-								}
-							}
-							else {
-								x_speed = 0;
-							}
-						}
-
-						else if (mes == 'R') {
-							x_speed = getXSpeed(StrafeVisionCorrect(), 0);
-							output_cube = true;
-						}
-						break;
-					case LEFT:
-						if (mes == 'L') {
-							x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
-						}
-						else if (mes == 'R') {
-							x_speed = 0;
-							arm->toScale();
-							if (distance < SCALE_DIST) {
-								y_speed = (SCALE_DIST - distance)/70;
-							}
-							if (mes_2 == 'R') {
-								if (distance > 210 && distance < 290) { //distances are arbritrary rn
-									x_speed = 0.8;
-								}
-							}
-						}
-						break;
-					case STRAIGHT:
-						output_cube = false;
-						break;
-					default:
-						output_cube = false;
-						x_speed = 0;
-						y_speed = 0;
-						rot = 0;
-						break;
-					}
-				}
-				else if (time > 8 && time < 12) {
+				if (mode == NOTHING){
+					output_cube = false;
 					x_speed = 0;
 					y_speed = 0;
 					rot = 0;
-					if(output_cube){
-						intake->toOutput();
+				} else{
+					if (time < 1) {
+						y_speed = 0.5;
+						arm->toSwitch();
+					}
+
+					else if (time > 1 && time < 8) {
+						y_speed = 0.3;
+						//arm->toSwitch();
+
+						if (acquired) {
+							y_speed = 0.3; //set speed to be slower
+						}
+						switch(mode) {
+						case CENTER:
+							if (mes == 'L') {
+								x_speed = getXSpeed(StrafeVisionCorrect(), -0.7);
+							}
+							else if (mes == 'R') {
+								x_speed = getXSpeed(StrafeVisionCorrect(), 0.7);
+							}
+							break;
+						case RIGHT:
+							if (mes == 'L') {
+								if (distance < SCALE_DIST) {
+									y_speed = (SCALE_DIST - distance)/70;
+									arm->toScale();
+								} // y speed
+								if (distance < 168) /* to change */{
+									x_speed = 0.5;
+								}
+								else if (distance < 210) {
+									x_speed = 0;
+								}//to go around switch
+								else if (distance < 270 || (mes_2 == 'L' && distance< 290)) {
+									if (mes_2 == 'R') {
+										x_speed = -0.5;
+									}
+									else if (mes_2 == 'L') {
+										if (distance < 290) {
+											y_speed = 0.1;
+											x_speed = -0.8;
+										}
+									}
+								}
+								else {
+									x_speed = 0;
+								}
+							}
+
+							else if (mes == 'R') {
+								x_speed = getXSpeed(StrafeVisionCorrect(), 0);
+								output_cube = true;
+							}
+							break;
+						case LEFT:
+							if (mes == 'L') {
+								x_speed = getXSpeed(StrafeVisionCorrect(), 0.2);
+							}
+							else if (mes == 'R') {
+								x_speed = 0;
+								arm->toScale();
+								if (distance < SCALE_DIST) {
+									y_speed = (SCALE_DIST - distance)/70;
+								}
+								if (mes_2 == 'R') {
+									if (distance > 210 && distance < 290) { //distances are arbritrary rn
+										x_speed = 0.8;
+									}
+								}
+							}
+							break;
+						case STRAIGHT:
+							output_cube = false;
+							break;
+						default:
+							output_cube = false;
+							x_speed = 0;
+							y_speed = 0;
+							rot = 0;
+							break;
+						}
+					}
+					else if (time > 8 && time < 12) {
+						x_speed = 0;
+						y_speed = 0;
+						rot = 0;
+						if(output_cube){
+							intake->toOutput();
+						}
 					}
 				}
 
@@ -636,12 +643,15 @@ public:
 
 		if(copilot->ButtonState(GamepadF310::BUTTON_Y)){
 			intake->toIntake();
-			if (copilot->ButtonState(GamepadF310::BUTTON_A)) {
+			if (copilot->ButtonState(GamepadF310::BUTTON_B)) {
 				intake->toAdjust();
 			}
 		}
 		else if(copilot->ButtonState(GamepadF310::BUTTON_X)){
 			intake->toOutput();
+		}
+		else if(copilot->ButtonState(GamepadF310::BUTTON_A)){
+			intake->toSlowOutput();
 		}
 
 		intake->update();

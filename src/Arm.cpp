@@ -8,11 +8,11 @@
 #include "Arm.h"
 
 Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(pot) {
-	p = 0.1f;
+	p = 0.05f;
 	i = 0;
 	d = 0;
 	pos = DOWN;
-	state = PID;
+	state = RAW;
 	speed = 0;
 
 	pid = new PIDController(p, i, d, pot, armMotor);

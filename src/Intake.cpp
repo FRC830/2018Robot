@@ -26,6 +26,10 @@ void Intake::toOutput() {
 	intakeMode = OUTPUT;
 }
 
+void Intake::toSlowOutput() {
+	intakeMode = SLOW_OUTPUT;
+}
+
 void Intake::toAdjust() {
 	intakeMode = ADJUST;
 }
@@ -46,7 +50,7 @@ void Intake::update() {
 	switch (intakeMode) {
 	case ADJUST:
 		leftMotor->Set(intakeSpeed);
-		rightMotor->Set(-intakeSpeed/2);
+		rightMotor->Set(intakeSpeed/2);
 		break;
 	case INTAKE:
 		leftMotor->Set(intakeSpeed);
@@ -55,6 +59,10 @@ void Intake::update() {
 	case OUTPUT:
 		leftMotor->Set(outputSpeed);
 		rightMotor->Set(outputSpeed);
+		break;
+	case SLOW_OUTPUT:
+		leftMotor->Set(outputSpeed/4);
+		rightMotor->Set(outputSpeed/4);
 		break;
 	default:
 		leftMotor->Set(0);
