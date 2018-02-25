@@ -31,6 +31,7 @@ public :
 };
 
 
+
 class Robot: public frc::IterativeRobot {
 private:
 	/*frc::LiveWindow* lw = LiveWindow::GetInstance();
@@ -40,23 +41,24 @@ private:
 	std::string autoSelected; */
 
 	enum AutoMode {NOTHING, CENTER = 2, LEFT = -1, RIGHT = 1, STRAIGHT = 3};
-
+	enum BotType {REAL = -1, PRACTICE = 1};
 public:
 	static const int FRONT_LEFT_PWM = 6; //real
 	static const int BACK_LEFT_PWM = 7; //real
 	static const int FRONT_RIGHT_PWM = 0; //real
 	static const int BACK_RIGHT_PWM = 1; //real
 
-//	static const int FRONT_LEFT_PWM = 1; //practice
-//	static const int BACK_LEFT_PWM = 0; //practice
-//	static const int FRONT_RIGHT_PWM = 3; //practice
-//	static const int BACK_RIGHT_PWM = 2; //practice
+//	static const int FRONT_LEFT_PWM = 6; //practice
+//	static const int BACK_LEFT_PWM = 7; //practice
+//	static const int FRONT_RIGHT_PWM = 0; //practice originally 1
+//	static const int BACK_RIGHT_PWM = 3; //practice
 
 
-	static const int LEFT_INTAKE_PWM = 3; //subject to choonge
-	static const int RIGHT_INTAKE_PWM = 4;
+	static const int LEFT_INTAKE_PWM = 4; //practice bot
+	static const int RIGHT_INTAKE_PWM = 1; //practice bot
 
-	static const int ARM_PWM = 9;
+	static const int ARM_PWM = 9; //real
+//	static const int ARM_PWM = 8; //practice
 	static const int CLIMBER_PWM = 2;
 
 	static const int RED_LED_DIO = 9;
@@ -106,6 +108,7 @@ public:
 	VictorSP * test;
 
 	SendableChooser<AutoMode*> *chooser;
+	SendableChooser<BotType*> *botType;
 
 	//AnalogPotentiometer *pot;
 	//PIDController *pid;
@@ -186,7 +189,6 @@ public:
 					camera.SetExposureAuto();
 					setExposure = true;
 				}
-
 			}
 
 
@@ -235,7 +237,12 @@ public:
 		chooser->AddDefault("Nothing", new AutoMode(NOTHING));
 		chooser->AddObject("Straight", new AutoMode(STRAIGHT));
 
-		SmartDashboard::PutData(chooser);
+		botType = new SendableChooser<BotType*>;
+		botType->AddDefault("Real Bot", new BotType(REAL));
+		botType->AddObject("Practice Bot", new BotType(PRACTICE));
+
+		SmartDashboard::PutData("auton mode",chooser);
+		SmartDashboard::PutData("bot",botType);
 
 		timer.Reset();
 		timer.Start();
@@ -445,7 +452,6 @@ public:
 							if (mes_2 == 'R') {
 								if (distance > 210 && distance < 290) { //distances are arbritrary rn
 									x_speed = 0.8;
-
 								}
 							}
 						}
@@ -476,8 +482,7 @@ public:
 
 				float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 				float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
-
-				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, angle);
+				drive->DriveCartesian(f_x_speed/1.5, *botType->GetSelected()*f_y_speed/1.5, rot, angle);
 				arm->armMoveUpdate();
 				intake->update();
 
@@ -595,7 +600,7 @@ public:
 
 		//encoderDrive->DriveCarties(x_speed, y_speed, final_turn, 0);
 
-		drive->DriveCartesian(x_speed, -y_speed, turn, -gyro_read);
+		drive->DriveCartesian(x_speed, *botType->GetSelected()*y_speed, turn, -gyro_read);
 
 
 		prev_y_speed = y_speed;
