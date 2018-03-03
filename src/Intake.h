@@ -18,14 +18,17 @@ public:
 	void toOutput();
 	void toAdjust();
 	void toSlowOutput();
+	void Set(float speed);
 	void update();
 	void stop();
 	Timer timer;
 private:
-	enum IntakeMode {INTAKE, OUTPUT, SLOW_OUTPUT, ADJUST, NOTHING};
+	enum IntakeMode {INTAKE, OUTPUT, SLOW_OUTPUT, ADJUST, NOTHING, MANUAL};
 	IntakeMode intakeMode;
 	VictorSP *leftMotor;
 	VictorSP *rightMotor;
+
+	float speed;
 };
 
 

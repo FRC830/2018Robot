@@ -100,7 +100,7 @@ void Arm::rawPosition(float speed){
 
 void Arm::toSwitchNoPot() {
 	armTimer.Start();
-	if (armTimer.Get() < 3.3) {
+	if (armTimer.Get() < 4.0) {
 		rawPosition(0.9);
 	}
 	else {

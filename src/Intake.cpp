@@ -40,6 +40,11 @@ void Intake::stop() {
 	intakeMode = NOTHING;
 }
 
+void Intake::Set(float speed) {
+	this->speed = speed;
+	intakeMode = MANUAL;
+}
+
 //void Intake::toAdjust()
 
 void Intake::update() {
@@ -65,6 +70,10 @@ void Intake::update() {
 	case SLOW_OUTPUT:
 		leftMotor->Set(outputSpeed/4);
 		rightMotor->Set(outputSpeed/4);
+		break;
+	case MANUAL:
+		leftMotor->Set(speed);
+		rightMotor->Set(speed);
 		break;
 	default:
 		leftMotor->Set(0);
