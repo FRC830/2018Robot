@@ -12,12 +12,12 @@ Arm::Arm(VictorSP *armMotor, AnalogPotentiometer *pot):armMotor(armMotor), pot(p
 	i = 0;
 	d = 0;
 	pos = DOWN;
-	state = RAW;
+	state = PID;
 	speed = 0;
 
 	pid = new PIDController(p, i, d, pot, armMotor);
 	pid->SetInputRange(0,270); //subject to change
-	pid->SetOutputRange(-1.0, 1.0);
+	pid->SetOutputRange(-0.7, 1.0);
 	pid->SetAbsoluteTolerance(5);
 	pid->SetPID(p,i,d);
 	pid->SetSetpoint(setPoints[pos]);
@@ -81,13 +81,14 @@ void Arm::manualPosition(float button_up, float button_down) {
 		toManual = true;
 	}
 
-	if (manual_pos > 5 && manual_pos < 250) {
-		manual_pos = manual_pos + (change * 1); //subject to change
+	if (manual_pos > 50 && manual_pos < 275) {
+		manual_pos = manual_pos + (change * -1); //subject to change
 		setPoints[6] = manual_pos;
 	}
 
 	pos = MANUAL;
 }
+
 
 void Arm::rawPosition(float speed){
 	float cur_speed = Lib830::accel(prev_speed, speed, TICKS_TO_ACCEL);
@@ -97,11 +98,24 @@ void Arm::rawPosition(float speed){
 	state = RAW;
 }
 
+void Arm::toSwitchNoPot() {
+	armTimer.Start();
+	if (armTimer.Get() < 3.3) {
+		rawPosition(0.9);
+	}
+	else {
+		rawPosition(0.0);
+	}
+}
+
 
 void Arm::armMoveUpdate() {
 	pid->SetEnabled(state == PID);
 	if (state == RAW){
-		armMotor->Set(speed);
+		armMotor->Set(-speed);
+		if (armTimer.Get() > 10) {
+			armTimer.Reset();
+		}
 	}
 	else {
 		double position = setPoints[pos];

@@ -27,6 +27,8 @@ void Intake::toOutput() {
 }
 
 void Intake::toSlowOutput() {
+	timer.Reset();
+	timer.Start();
 	intakeMode = SLOW_OUTPUT;
 }
 
@@ -68,4 +70,7 @@ void Intake::update() {
 		leftMotor->Set(0);
 		rightMotor->Set(0);
 	};
+
+	SmartDashboard::PutNumber("intake output speed", leftMotor->Get());
+	SmartDashboard::PutNumber("intake mode", intakeMode);
 }

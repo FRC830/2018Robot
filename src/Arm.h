@@ -26,12 +26,17 @@ public:
 	float getRawPosition();
 	float getSetPoint();
 	void armMoveUpdate();
+
+	void setState(int state);
+	void toSwitchNoPot();
 	virtual ~Arm();
 
 private:
 	VictorSP *armMotor;
 	AnalogPotentiometer *pot;
 	PIDController *pid;
+
+	Timer armTimer;
 	bool up;
 	bool down;
 	float speed;
