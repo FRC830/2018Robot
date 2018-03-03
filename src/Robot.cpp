@@ -377,9 +377,7 @@ public:
 	float prev_x_speed = 0;
 	bool output_cube = true;
 	bool toscale = false;
-	bool to90 = true;
 
-	float new_angle = 0;
 	float SCALE_DIST = 305;
 	float distance = 0;
 	void AutonomousPeriodic() {
@@ -419,7 +417,7 @@ public:
 				} else{
 					if (time < 1) {
 						if (mode != CENTER) {
-							//y_speed = 0.5;
+							y_speed = 0.5;
 						}
 						else {
 							y_speed = 0.3;
@@ -434,7 +432,7 @@ public:
 
 					else if (time > 1 && time < 8) {
 						if (mode != CENTER) {
-							//y_speed = 0.5;
+							y_speed = 0.5;
 						}
 						else {
 							y_speed = 0.3;
@@ -455,16 +453,16 @@ public:
 						switch(mode) {
 						case CENTER:
 							if (mes == 'L') {
-								x_speed = getXSpeed(StrafeVisionCorrect(), -0.9);
+								x_speed = getXSpeed(StrafeVisionCorrect(), -0.8);
 							}
 							else if (mes == 'R') {
-								x_speed = getXSpeed(StrafeVisionCorrect(), 0.9);
+								x_speed = getXSpeed(StrafeVisionCorrect(), 0.8);
 							}
 							break;
 						case RIGHT:
 							if (mes == 'L') {
 								x_speed = 0;
-								//y_speed = 0.5;
+								y_speed = 0.5;
 								output_cube = false;
 								if (mes_2 == 'R') {
 									toscale = true;
@@ -506,7 +504,7 @@ public:
 							}
 							else if (mes == 'R') {
 								x_speed = 0;
-								//y_speed = 0.5;
+								y_speed = 0.5;
 								output_cube = false;
 								if (mes_2 == 'L') {
 									toscale = true;
@@ -524,6 +522,9 @@ public:
 							}
 							break;
 						case STRAIGHT:
+							if (time > 3.5) {
+								y_speed = 0;
+							}
 							output_cube = false;
 							break;
 						default:
@@ -544,31 +545,26 @@ public:
 							intake->toOutput();
 						}
 						if (toscale) {
-							climber.Set(1);
-
 							if (time < 10) {
-								cout << "to 90 success!" <<endl;
+								climber.Set(1);
 								if (mode == LEFT) {
-									new_angle -= 90;
-									rot = 0.5;
-									to90 = false;
-									cout << "angle has changed" <<endl;
+									angle = new_gyro->GetAngle() - 73;
+									rot = angle/-90;
 								}
 								else if (mode == RIGHT) {
-									angle = new_gyro->GetAngle() + 90;
-									rot = angle/-70;
-									cout << "angle: " << angle <<endl;
-//									rot = -0.5;
-//									new_angle+=90;
-//									to90 = false;
-//									cout << "angle has changed" <<endl;
-//									cout << "angle: "<< new_angle <<endl;
+									angle = new_gyro->GetAngle() + 73;
+									rot = angle/-90;
 								}
 							}
-							else if (time > 10) {
+							else if (time > 10 && time < 11.5) {
 								climber.Set(0);
-								//intake->toOutput();
+								y_speed = 0.2;
 								rot = 0;
+							}
+							else if (time ){
+								rot = 0;
+								y_speed = 0;
+								intake->toOutput();
 							}
 						}
 					}
@@ -577,11 +573,9 @@ public:
 				SmartDashboard::PutNumber("get distance", distance);
 				SmartDashboard::PutNumber("raw", flencoder->GetRaw());
 
-
-				cout << "rot: " << rot <<endl;
 				float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 				float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
-				drive->DriveCartesian(f_x_speed/1.5, 0/*f_y_speed/1.5*/, rot, field_angle);
+				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, field_angle);
 				arm->armMoveUpdate();
 				intake->update();
 
@@ -733,10 +727,13 @@ public:
 		up.toggle(copilot->RightTrigger());
 		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-(copilot->LeftTrigger()/2));
-			if (intakeMove.toggle(copilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
-				climber.Set(copilot->RightTrigger()-(copilot->LeftTrigger()));
+			if (copilot->RightTrigger() && !copilot->DPadLeft()) {
+				intake->toIntake();
 			}
-			else {
+//			if (intakeMove.toggle(copilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
+//				climber.Set(copilot->RightTrigger()-(copilot->LeftTrigger()));
+//			}
+//			else {
 				if(copilot->DPadUp()){
 					climber.Set(1);
 				}
@@ -746,7 +743,7 @@ public:
 				else{
 					climber.Set(0);
 				}
-			}
+		//	}
 			color2 = DigitalLED::Cyan;
 		}
 		else {
