@@ -4,7 +4,7 @@
  * LeftX - strafe
  * RightX - turn
  * Button X - turns on field oriented drive
- *
+ * Left Stick - toggles teleop gyro correct
  * DPad Up - turns 180 degrees
  * Button B - changes camera exposure to show vision targets
  *
