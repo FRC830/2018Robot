@@ -1,4 +1,28 @@
- #include <iostream>
+/*
+ * pilot controls:
+ * LeftY - forward/backwards
+ * LeftX - strafe
+ * RightX - turn
+ * Button X - turns on field oriented drive
+ *
+ * DPad Up - turns 180 degrees
+ * Button B - changes camera exposure to show vision targets
+ *
+ * copilot controls:
+ * Left trigger - arm up (&intake at the same time)
+ * DPad left will stop the intake from spinning as the arm is raised up
+ * Right trigger - arm down
+ * Button Y -  intake
+ * Button A - output
+ * Button X - slow output
+ * Button A - intake adjust (turns one side the other way)
+ * DPad Up - winch up
+ * DPad Down - winch down
+ */
+
+
+
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -41,7 +65,6 @@ private:
 	std::string autoSelected; */
 
 	enum AutoMode {NOTHING, CENTER = 2, LEFT = -1, RIGHT = 1, STRAIGHT = 3};
-	enum BotType {REAL = -1, PRACTICE = 1};
 public:
 	static const int FRONT_LEFT_PWM = 0; //real
 	static const int BACK_LEFT_PWM = 1; //real
@@ -60,7 +83,7 @@ public:
 
 	static const int ARM_PWM = 9; //real
 //	static const int ARM_PWM = 8; //practice
-	static const int CLIMBER_PWM = 2;
+	static const int WINCH_PWM = 2;
 
 	static const int RED_LED_DIO = 9;
 	static const int GREEN_LED_DIO = 24;
@@ -90,7 +113,7 @@ public:
 	Lib830::GamepadF310 * copilot;
 
 	//frc::AnalogGyro *gyro;
-	frc::ADXRS450_Gyro *new_gyro;
+	frc::ADXRS450_Gyro *gyro;
 //	Relay redLED;
 //	Relay greenLED;
 //	Relay blueLED;
@@ -99,7 +122,7 @@ public:
 	VictorSP bl;
 	VictorSP fr;
 	VictorSP br;
-	VictorSP climber;
+	VictorSP winch;
 	Timer timer;
 
 	TurnController turnController;
@@ -110,7 +133,6 @@ public:
 	VictorSP * test;
 
 	SendableChooser<AutoMode*> *chooser;
-	SendableChooser<BotType*> *botType;
 
 	//AnalogPotentiometer *pot;
 	//PIDController *pid;
@@ -121,6 +143,8 @@ public:
 	DigitalLED *relayLED;
 
 	Toggle gyroCorrect;
+	Toggle armManual;
+
 
 	Encoder *flencoder;
 	Encoder *blencoder;
@@ -135,9 +159,10 @@ public:
 			bl(BACK_LEFT_PWM),
 			fr(FRONT_RIGHT_PWM),
 			br(BACK_RIGHT_PWM),
-			climber(CLIMBER_PWM),
+			winch(WINCH_PWM),
 			turnPID(1/80.0, 0.0, 0.05, turnController,turnController,0.02),
-			gyroCorrect(true)
+			gyroCorrect(true),
+			armManual(true)
 
 //			redLED(RED_RELAY, Relay::kForwardOnly),
 //			greenLED(GREEN_RELAY, Relay::kForwardOnly),
@@ -207,7 +232,7 @@ public:
 		frc::SmartDashboard::PutData("Auto Modes", &chooser); */
 
 		//gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
-		new_gyro = new frc::ADXRS450_Gyro();
+		gyro = new frc::ADXRS450_Gyro();
 
 		drive = new MecanumDrive (
 				fl,
@@ -220,10 +245,8 @@ public:
 		pilot = new Lib830::GamepadF310(0);
 		copilot = new Lib830::GamepadF310(1);
 
-		//gyro->Calibrate();
-		//gyro->Reset();
-		new_gyro->Calibrate();
-		new_gyro->Reset();
+		gyro->Calibrate();
+		gyro->Reset();
 
 		led = new DigitalLED(new DigitalOutput(RED_LED_DIO), new DigitalOutput(GREEN_LED_DIO), new DigitalOutput(BLUE_LED_DIO));
 		std::thread visionThread(CameraPeriodic);
@@ -242,12 +265,8 @@ public:
 		chooser->AddDefault("Nothing", new AutoMode(NOTHING));
 		chooser->AddObject("Straight", new AutoMode(STRAIGHT));
 
-		botType = new SendableChooser<BotType*>;
-		botType->AddDefault("Real Bot", new BotType(REAL));
-		botType->AddObject("Practice Bot", new BotType(PRACTICE));
 
 		SmartDashboard::PutData("auton mode",chooser);
-		SmartDashboard::PutData("bot",botType);
 
 		timer.Reset();
 		timer.Start();
@@ -319,8 +338,7 @@ public:
 		timer.Reset();
 		timer.Start();
 
-		//gyro->Reset();
-		new_gyro->Reset();
+		gyro->Reset();
 		acquired = false;
 		vision = true;
 		//arm->toDown();
@@ -364,18 +382,9 @@ public:
 		}
 	}
 
-	int getBotType() {
-		if (botType->GetSelected()) {
-			return *botType->GetSelected();
-		}
-		else {
-			return -1;
-		}
-	}
-
 	float prev_y_speed = 0;
 	float prev_x_speed = 0;
-	bool output_cube = true;
+	bool output_cube = false;
 	bool toscale = false;
 
 	float SCALE_DIST = 305;
@@ -397,9 +406,7 @@ public:
 
 				float x_speed = 0;
 				float y_speed = 0;
-				//float angle = gyro->GetAngle();
-				float angle = new_gyro->GetAngle();
-				float field_angle = new_gyro->GetAngle();
+				float angle = gyro->GetAngle();
 				float rot = 0;
 				if (!bad_gyro) {
 						rot = angle/-30;
@@ -410,20 +417,19 @@ public:
 
 				distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;;
 				if (mode == NOTHING){
-					output_cube = false;
 					x_speed = 0;
 					y_speed = 0;
 					rot = 0;
 				} else{
 					if (time < 1) {
-						if (mode != CENTER) {
-							y_speed = 0.5;
-						}
-						else {
+						if (mode == CENTER) {
 							y_speed = 0.3;
 						}
+						else {
+							y_speed = 0.5;
+						}
 						if (time < 0.5) {
-							climber.Set(1);
+							winch.Set(1);
 						}
 						else {
 							arm->toSwitchNoPot();
@@ -431,20 +437,18 @@ public:
 					}
 
 					else if (time > 1 && time < 8) {
-						if (mode != CENTER) {
-							y_speed = 0.5;
-						}
-						else {
-							y_speed = 0.3;
-						}
+						y_speed = 0.5;
 						intake->toIntake();
 						//arm->toSwitch();
 						arm->toSwitchNoPot();
 						if (time < 1.5) {
-							climber.Set(-1.0);
+							winch.Set(-1.0);
+						}
+						else if (time > 2.5 && time < 4) {
+							winch.Set(-1);
 						}
 						else {
-							climber.Set(0);
+							winch.Set(0);
 						}
 
 						if (acquired) {
@@ -452,18 +456,19 @@ public:
 						}
 						switch(mode) {
 						case CENTER:
+							y_speed = 0.3;
 							if (mes == 'L') {
 								x_speed = getXSpeed(StrafeVisionCorrect(), -0.8);
 							}
 							else if (mes == 'R') {
 								x_speed = getXSpeed(StrafeVisionCorrect(), 0.8);
 							}
+							output_cube = true;
 							break;
 						case RIGHT:
 							if (mes == 'L') {
 								x_speed = 0;
 								y_speed = 0.5;
-								output_cube = false;
 								if (mes_2 == 'R') {
 									toscale = true;
 								}
@@ -501,11 +506,12 @@ public:
 						case LEFT:
 							if (mes == 'L') {
 								x_speed = getXSpeed(StrafeVisionCorrect(), 0.5);
+								output_cube = true;
 							}
 							else if (mes == 'R') {
 								x_speed = 0;
 								y_speed = 0.5;
-								output_cube = false;
+
 								if (mes_2 == 'L') {
 									toscale = true;
 								}
@@ -525,10 +531,9 @@ public:
 							if (time > 3.5) {
 								y_speed = 0;
 							}
-							output_cube = false;
+
 							break;
 						default:
-							output_cube = false;
 							x_speed = 0;
 							y_speed = 0;
 							rot = 0;
@@ -538,31 +543,25 @@ public:
 					else if (time > 8 && time < 12) {
 						x_speed = 0;
 						y_speed = 0;
-						//rot = 0;
-						cout << "to 90: " <<endl;
+						rot = 0;
 						if(output_cube){
-
 							intake->toOutput();
 						}
 						if (toscale) {
 							if (time < 10) {
-								climber.Set(1);
 								if (mode == LEFT) {
-									angle = new_gyro->GetAngle() - 73;
+									angle = gyro->GetAngle() - 73;
 									rot = angle/-90;
 								}
 								else if (mode == RIGHT) {
-									angle = new_gyro->GetAngle() + 73;
+									angle = gyro->GetAngle() + 73;
 									rot = angle/-90;
 								}
 							}
 							else if (time > 10 && time < 11.5) {
-								climber.Set(0);
 								y_speed = 0.2;
-								rot = 0;
 							}
-							else if (time ){
-								rot = 0;
+							else {
 								y_speed = 0;
 								intake->toOutput();
 							}
@@ -575,7 +574,7 @@ public:
 
 				float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 				float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
-				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, field_angle);
+				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, gyro->GetAngle());
 				arm->armMoveUpdate();
 				intake->update();
 
@@ -596,7 +595,7 @@ public:
 	void doA180(Toggle &pressed) {
 		if (pressed) {
 			//cout << "PRESSED SUCCESS!" <<endl;
-			gyroTarget += 181;
+			gyroTarget += 151;
 			pressed = false;
 		}
 		SmartDashboard::PutNumber("setpoint", gyroTarget);
@@ -605,8 +604,6 @@ public:
 	Toggle turn_180;
 
 	float change = 0;
-
-	Toggle PID;
 
 	void TeleopInit() {
 		turnPID.SetInputRange(0,360);
@@ -619,8 +616,7 @@ public:
 
 		vision = false;
 		turn_180 = false;
-		//gyro->Reset();
-		new_gyro->Reset();
+		gyro->Reset();
 		change = 0;
 		gyroTarget = 0;
 		led->Disable();
@@ -630,7 +626,6 @@ public:
 		frencoder->Reset();
 		brencoder->Reset();
 
-		PID = true; //bad naming
 		bad_gyro = SmartDashboard::GetBoolean("bad gyro", false);
 		if (bad_gyro) {
 			gyroCorrect = false;
@@ -656,13 +651,7 @@ public:
 
 
 	void TeleopPeriodic() override {
-//		SmartDashboard::PutNumber("fl encoder", flencoder.GetRate());
-//		SmartDashboard::PutNumber("bl encoder", blencoder.GetRate());
-//		SmartDashboard::PutNumber("fr encoder", frencoder.GetRate());
-//		SmartDashboard::PutNumber("br encoder", brencoder.GetRate());
-		//float angle = gyro->GetAngle() - change;
-		float angle = new_gyro->GetAngle() - change;
-
+ 		float angle = gyro->GetAngle() - change;
 		turnController.gyro_angle = angle;
 		DigitalLED::Color color1 {DigitalLED::Lime};
 		DigitalLED::Color color2 {DigitalLED::Lime};
@@ -675,8 +664,7 @@ public:
 
 		if (field_orient.toggle(pilot->ButtonState(GamepadF310::BUTTON_X))){
 			color1 = DigitalLED::Magenta;
-			//gyro_read = gyro->GetAngle();
-			gyro_read = new_gyro->GetAngle();
+			gyro_read = gyro->GetAngle();
 		}
 
 
@@ -692,8 +680,7 @@ public:
 			turnPID.SetSetpoint(fmod(gyroTarget,360));
 		}
 		else  {
-			//change = gyro->GetAngle();
-			change = new_gyro->GetAngle();
+			change = gyro->GetAngle();
 			gyroTarget = 0;
 		}
 		turn_180.toggle(pilot->DPadLeft());
@@ -701,10 +688,6 @@ public:
 
 		SmartDashboard::PutBoolean("180 turn",turn_180);
 		SmartDashboard::PutNumber("adjusted angle", angle);
-
-		//float final_turn =  Lib830::accel(prev_turn, turn, 5);
-
-		//encoderDrive->DriveCarties(x_speed, y_speed, final_turn, 0);
 
 		drive->DriveCartesian(x_speed, y_speed, turn, -gyro_read);
 
@@ -718,32 +701,24 @@ public:
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
 
-		if (pilot->ButtonState(GamepadF310::BUTTON_A)){
-			SmartDashboard::PutNumber("Strafe speed", StrafeVisionCorrect());
-		}
-
-
 		down.toggle(copilot->LeftTrigger());
 		up.toggle(copilot->RightTrigger());
-		if (PID.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
+		if (armManual.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-(copilot->LeftTrigger()/2));
 			if (copilot->RightTrigger() && !copilot->DPadLeft()) {
 				intake->toIntake();
 			}
-//			if (intakeMove.toggle(copilot->ButtonState(GamepadF310::BUTTON_LEFT_STICK))) {
-//				climber.Set(copilot->RightTrigger()-(copilot->LeftTrigger()));
-//			}
-//			else {
-				if(copilot->DPadUp()){
-					climber.Set(1);
-				}
-				else if (copilot->DPadDown()) {
-					climber.Set(-1);
-				}
-				else{
-					climber.Set(0);
-				}
-		//	}
+
+			if(copilot->DPadUp()){
+				winch.Set(1);
+			}
+			else if (copilot->DPadDown()) {
+				winch.Set(-1);
+			}
+			else{
+				winch.Set(0);
+			}
+
 			color2 = DigitalLED::Cyan;
 		}
 		else {
@@ -755,7 +730,6 @@ public:
 				arm->automaticPosition(up, down);
 			}
 		}
-		arm->armMoveUpdate();
 
 		if(copilot->ButtonState(GamepadF310::BUTTON_Y)){
 			intake->toIntake();
@@ -769,10 +743,8 @@ public:
 		else if(copilot->ButtonState(GamepadF310::BUTTON_A)){
 			intake->toOutput();
 		}
-
+		arm->armMoveUpdate();
 		intake->update();
-
-		//led->Set(DigitalLED::AliceBlue);
 
 	}
 
@@ -795,21 +767,13 @@ public:
 
 	void RobotPeriodic() override {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
-		//led->Set(0,1,0);
-		//DigitalLED::Color cyan = {0, 0.4, 1};
-
-		//cout << "vision correct: " << vision << endl;
-
-		//up.toggle(pilot->ButtonState(GamepadF310::BUTTON_A));
-		//down.toggle(pilot->ButtonState(GamepadF310::BUTTON_X));
 
 		SmartDashboard::PutNumber("pot position",arm->getRawPosition());
 		SmartDashboard::PutNumber("front left", fl.Get());
 		SmartDashboard::PutNumber("back left", bl.Get());
 		SmartDashboard::PutNumber("front right", fr.Get());
 		SmartDashboard::PutNumber("back right", br.Get());
-		//SmartDashboard::PutNumber("gyro", gyro->GetAngle());
-		SmartDashboard::PutNumber("gyro", new_gyro->GetAngle());
+		SmartDashboard::PutNumber("gyro", gyro->GetAngle());
 
 
 //		redLED.Set(Relay::kOn);
