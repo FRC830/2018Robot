@@ -57,7 +57,7 @@ void Intake::update() {
 	switch (intakeMode) {
 	case ADJUST:
 		leftMotor->Set(intakeSpeed);
-		rightMotor->Set(intakeSpeed/2);
+		rightMotor->Set(-intakeSpeed/2);
 		break;
 	case INTAKE:
 		leftMotor->Set(intakeSpeed);
