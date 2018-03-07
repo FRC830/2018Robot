@@ -66,23 +66,23 @@ private:
 
 	enum AutoMode {NOTHING, CENTER = 2, LEFT = -1, RIGHT = 1, STRAIGHT = 3};
 public:
-	static const int FRONT_LEFT_PWM = 0; //real
-	static const int BACK_LEFT_PWM = 1; //real
-	static const int FRONT_RIGHT_PWM = 6; //real
-	static const int BACK_RIGHT_PWM = 7; //real
+	//static const int FRONT_LEFT_PWM = 0; //real
+	//static const int BACK_LEFT_PWM = 1; //real
+	//static const int FRONT_RIGHT_PWM = 6; //real
+	//static const int BACK_RIGHT_PWM = 7; //real
 
-//	static const int FRONT_LEFT_PWM = 6; //practice
-//	static const int BACK_LEFT_PWM = 7; //practice
-//	static const int FRONT_RIGHT_PWM = 0; //practice originally 1
-//	static const int BACK_RIGHT_PWM = 3; //practice
+	static const int FRONT_LEFT_PWM = 6; //practice
+	static const int BACK_LEFT_PWM = 7; //practice
+	static const int FRONT_RIGHT_PWM = 0; //practice originally 1
+	static const int BACK_RIGHT_PWM = 3; //practice
 
 
 	static const int LEFT_INTAKE_PWM = 4; //practice bot and real
-	static const int RIGHT_INTAKE_PWM = 3; //real bot
-//	static const int RIGHT_INTAKE_PWM = 1; //practice bot
+//	static const int RIGHT_INTAKE_PWM = 3; //real bot
+	static const int RIGHT_INTAKE_PWM = 1; //practice bot
 
-	static const int ARM_PWM = 9; //real
-//	static const int ARM_PWM = 8; //practice
+//	static const int ARM_PWM = 9; //real
+	static const int ARM_PWM = 8; //practice
 	static const int WINCH_PWM = 2;
 
 	static const int RED_LED_DIO = 9;
@@ -112,8 +112,8 @@ public:
 	Lib830::GamepadF310 * pilot;
 	Lib830::GamepadF310 * copilot;
 
-	//frc::AnalogGyro *gyro;
-	frc::ADXRS450_Gyro *gyro;
+	frc::AnalogGyro *gyro;
+//	frc::ADXRS450_Gyro *gyro;
 //	Relay redLED;
 //	Relay greenLED;
 //	Relay blueLED;
@@ -231,8 +231,8 @@ public:
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser); */
 
-		//gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
-		gyro = new frc::ADXRS450_Gyro();
+		gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
+//		gyro = new frc::ADXRS450_Gyro();
 
 		drive = new MecanumDrive (
 				fl,
