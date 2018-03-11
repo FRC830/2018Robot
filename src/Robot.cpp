@@ -83,7 +83,9 @@ public:
 
 //	static const int ARM_PWM = 9; //real
 	static const int ARM_PWM = 8; //practice
-	static const int WINCH_PWM = 2;
+
+
+	static const int WINCH_PWM = 5;
 
 	static const int RED_LED_DIO = 9;
 	static const int GREEN_LED_DIO = 24;
@@ -118,15 +120,15 @@ public:
 //	Relay greenLED;
 //	Relay blueLED;
 
-	VictorSP fl;
-	VictorSP bl;
-	VictorSP fr;
-	VictorSP br;
-	VictorSP winch;
+	VictorSP fl {FRONT_LEFT_PWM};
+	VictorSP bl {BACK_LEFT_PWM};
+	VictorSP fr {FRONT_RIGHT_PWM};
+	VictorSP br {BACK_RIGHT_PWM};
+	VictorSP winch {WINCH_PWM};
 	Timer timer;
 
 	TurnController turnController;
-	PIDController turnPID;
+	PIDController turnPID {1/80.0, 0.0, 0.05, turnController,turnController,0.02};
 
 	Lib830::DigitalLED *led;
 
@@ -142,8 +144,8 @@ public:
 
 	DigitalLED *relayLED;
 
-	Toggle gyroCorrect;
-	Toggle armManual;
+	Toggle gyroCorrect {true};
+	Toggle armManual {true};
 
 
 	Encoder *flencoder;
@@ -152,30 +154,15 @@ public:
 	Encoder *brencoder;
 
 
-
-
-	Robot() :IterativeRobot(),
-			fl(FRONT_LEFT_PWM),
-			bl(BACK_LEFT_PWM),
-			fr(FRONT_RIGHT_PWM),
-			br(BACK_RIGHT_PWM),
-			winch(WINCH_PWM),
-			turnPID(1/80.0, 0.0, 0.05, turnController,turnController,0.02),
-			gyroCorrect(true),
-			armManual(true)
-
-//			redLED(RED_RELAY, Relay::kForwardOnly),
-//			greenLED(GREEN_RELAY, Relay::kForwardOnly),
-//			blueLED(BLUE_RELAY, Relay::kForwardOnly)
-			{led = nullptr;}
-
 	static Toggle vision;
+	static Toggle driver_vision;
 	static void CameraPeriodic() {
 		CameraServer *server;
 		grip::GripPipeline * pipeline;
 
 		pipeline = new grip::GripPipeline();
-		cs::UsbCamera camera;
+		cs::UsbCamera vision_camera ("cam0", 0);
+		cs::UsbCamera driver_camera ("cam1", 1);
 		cv::Mat image;
 		cv::Mat temp_image;
 		bool g_frame = false;
@@ -184,15 +171,31 @@ public:
 		cs::CvSource outputStream;
 
 		server = CameraServer::GetInstance();
+		driver_camera = server->StartAutomaticCapture(0);
+		vision_camera = server->StartAutomaticCapture(1);
+		vision_camera.SetResolution(320,240);
+		driver_camera.SetResolution(320,240);
 
-		camera = server->StartAutomaticCapture();
-		camera.SetResolution(320,240);
-		sink = server->GetVideo();
+
+		driver_camera.SetFPS(24);
+
+
+		//string name = "serve_" + vision_camera.GetName();
+		sink = server->GetVideo(vision_camera);
 		outputStream = server->PutVideo("Processed", 320, 240);
+		cout << "camera periodic" <<endl;
+
 
 		bool setExposure = true;
 
 		while(1) {
+			if (driver_vision) {
+				sink = server->GetVideo(driver_camera);
+				vision = false;
+			}
+			else {
+				sink = server->GetVideo(vision_camera);
+			}
 
 			bool working = sink.GrabFrame(temp_image);
 			SmartDashboard::PutBoolean("working", working);
@@ -206,19 +209,17 @@ public:
 			}
 			if (vision) {
 				if (setExposure) {
-					camera.SetExposureManual(30);
+					vision_camera.SetExposureManual(30);
 					setExposure = false;
 				}
 				pipeline->Process(image);
 			}
 			else {
 				if (!setExposure) {
-					camera.SetExposureAuto();
+					vision_camera.SetExposureAuto();
 					setExposure = true;
 				}
 			}
-
-
 			//outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
 
 			outputStream.PutFrame(image);
@@ -631,6 +632,8 @@ public:
 			gyroCorrect = false;
 		}
 
+		driver_vision = true;
+
 	}
 
 
@@ -767,6 +770,7 @@ public:
 
 	void RobotPeriodic() override {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
+		driver_vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_X));
 
 		SmartDashboard::PutNumber("pot position",arm->getRawPosition());
 		SmartDashboard::PutNumber("front left", fl.Get());
@@ -797,6 +801,7 @@ public:
 };
 
 Toggle Robot::vision(true);
+Toggle Robot::driver_vision(true);
 
 START_ROBOT_CLASS(Robot)
 
