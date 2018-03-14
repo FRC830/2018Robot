@@ -174,7 +174,7 @@ public:
 		driver_camera = server->StartAutomaticCapture(0);
 		vision_camera = server->StartAutomaticCapture(1);
 		vision_camera.SetResolution(320,240);
-		driver_camera.SetResolution(320,240);
+		driver_camera.SetResolution(640,480);
 
 
 		driver_camera.SetFPS(24);
@@ -333,30 +333,46 @@ public:
 	 */
 	bool acquired = false;
 	bool bad_gyro = false;
+	float gyro_turn = 0;
 
-	void AutonomousInit() override {
+	void encoderReset() {
+		float pulse_per_rev = SmartDashboard::GetNumber("pulse per rev", 1024.0);
+		float dis_per_pulse = (6*3.1416)/pulse_per_rev;
+		distance = 0;
 
-		timer.Reset();
-		timer.Start();
-
-		gyro->Reset();
-		acquired = false;
-		vision = true;
-		//arm->toDown();
 		flencoder->Reset();
 		blencoder->Reset();
 		frencoder->Reset();
 		brencoder->Reset();
 
-
-		float pulse_per_rev = SmartDashboard::GetNumber("pulse per rev", 1024.0);
-		float dis_per_pulse = (6*3.1416)/pulse_per_rev;
-
 		flencoder->SetDistancePerPulse(dis_per_pulse);
 		blencoder->SetDistancePerPulse(dis_per_pulse);
 		frencoder->SetDistancePerPulse(dis_per_pulse);
 		brencoder->SetDistancePerPulse(dis_per_pulse);
+	}
+
+
+	bool output_cube = false;
+	bool toscale = false;
+	bool toswitch = false;
+	void AutonomousInit() override {
+
+		driver_vision = false;
+		timer.Reset();
+		timer.Start();
+
+		gyro->Reset();
+		acquired = false;
+		output_cube = false;
+		toscale = false;
+		toswitch = false;
+
+		vision = true;
+		//arm->toDown();
+		encoderReset();
+
 		bad_gyro = SmartDashboard::GetBoolean("bad gyro", false);
+		gyro_turn = 0;
 
 
 
@@ -385,8 +401,6 @@ public:
 
 	float prev_y_speed = 0;
 	float prev_x_speed = 0;
-	bool output_cube = false;
-	bool toscale = false;
 
 	float SCALE_DIST = 305;
 	float distance = 0;
@@ -407,7 +421,7 @@ public:
 
 				float x_speed = 0;
 				float y_speed = 0;
-				float angle = gyro->GetAngle();
+				float angle = gyro->GetAngle() + gyro_turn;
 				float rot = 0;
 				if (!bad_gyro) {
 						rot = angle/-30;
@@ -430,7 +444,7 @@ public:
 							y_speed = 0.5;
 						}
 						if (time < 0.5) {
-							winch.Set(1);
+							//winch.Set(1);
 						}
 						else {
 							arm->toSwitchNoPot();
@@ -443,13 +457,13 @@ public:
 						//arm->toSwitch();
 						arm->toSwitchNoPot();
 						if (time < 1.5) {
-							winch.Set(-1.0);
+							//winch.Set(-1.0);
 						}
 						else if (time > 2.5 && time < 4) {
-							winch.Set(-1);
+							//winch.Set(-1);
 						}
 						else {
-							winch.Set(0);
+							//winch.Set(0);
 						}
 
 						if (acquired) {
@@ -467,65 +481,31 @@ public:
 							output_cube = true;
 							break;
 						case RIGHT:
+							y_speed = 0.5;
 							if (mes == 'L') {
-								x_speed = 0;
-								y_speed = 0.5;
 								if (mes_2 == 'R') {
 									toscale = true;
 								}
-//								if (distance < SCALE_DIST) {
-//									y_speed = (SCALE_DIST - distance)/70;
-//									arm->toScale();
-//								} // y speed
-//								if (distance < 168) /* to change */{
-//									x_speed = 0.5;
-//								}
-//								else if (distance < 210) {
-//									x_speed = 0;
-//								}//to go around switch
-//								else if (distance < 270 || (mes_2 == 'L' && distance< 290)) {
-//									if (mes_2 == 'R') {
-//										x_speed = -0.5;
-//									}
-//									else if (mes_2 == 'L') {
-//										if (distance < 290) {
-//											y_speed = 0.1;
-//											x_speed = -0.8;
-//										}
-//									}
-//								}
-//								else {
-//									x_speed = 0;
-//								}
-							}
-
 							else if (mes == 'R') {
-								x_speed = getXSpeed(StrafeVisionCorrect(), 0);
-								output_cube = true;
+								toswitch = true;
+								if (time > 5) {
+									y_speed = 0;
+								}
 							}
 							break;
 						case LEFT:
+							x_speed = 0;
+							y_speed = 0.5;
 							if (mes == 'L') {
-								x_speed = getXSpeed(StrafeVisionCorrect(), 0.5);
-								output_cube = true;
+								toswitch = true;
+								if (time > 5) {
+									y_speed = 0;
+								}
 							}
 							else if (mes == 'R') {
-								x_speed = 0;
-								y_speed = 0.5;
-
 								if (mes_2 == 'L') {
 									toscale = true;
 								}
-
-//								arm->toScale();
-//								if (distance < SCALE_DIST) {
-//									y_speed = (SCALE_DIST - distance)/70;
-//								}
-//								if (mes_2 == 'R') {
-//									if (distance > 210 && distance < 290) { //distances are arbritrary rn
-//										x_speed = 0.8;
-//									}
-//								}
 							}
 							break;
 						case STRAIGHT:
@@ -541,29 +521,42 @@ public:
 							break;
 						}
 					}
-					else if (time > 8 && time < 12) {
+					}
+					else if (time > 8) {
 						x_speed = 0;
 						y_speed = 0;
-						rot = 0;
 						if(output_cube){
 							intake->toOutput();
 						}
-						if (toscale) {
-							if (time < 10) {
+						if (toscale || toswitch) {
+							float move_time = 0;
+							float after_turn_speed = 0;
+							if (toscale) {
+								move_time = 10;
+								after_turn_speed = 0.2;
+							}
+							else {
+								move_time = 5;
+								after_turn_speed = 0.7;
+							}
+							if (time < move_time) {
 								if (mode == LEFT) {
-									angle = gyro->GetAngle() - 73;
+									//angle = gyro->GetAngle() - 90;
+									gyro_turn = -90;
 									rot = angle/-90;
 								}
 								else if (mode == RIGHT) {
-									angle = gyro->GetAngle() + 73;
+									//angle = gyro->GetAngle() + 90;
+									gyro_turn = 90;
 									rot = angle/-90;
 								}
 							}
-							else if (time > 10 && time < 11.5) {
-								y_speed = 0.2;
+							else if (time > move_time && time < (move_time + 1.5)) {
+								y_speed = after_turn_speed;
 							}
 							else {
 								y_speed = 0;
+								rot = 0;
 								intake->toOutput();
 							}
 						}
@@ -573,9 +566,10 @@ public:
 				SmartDashboard::PutNumber("get distance", distance);
 				SmartDashboard::PutNumber("raw", flencoder->GetRaw());
 
+
 				float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 				float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
-				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, gyro->GetAngle());
+				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, 0);
 				arm->armMoveUpdate();
 				intake->update();
 
@@ -622,17 +616,14 @@ public:
 		gyroTarget = 0;
 		led->Disable();
 
-		flencoder->Reset();
-		blencoder->Reset();
-		frencoder->Reset();
-		brencoder->Reset();
-
 		bad_gyro = SmartDashboard::GetBoolean("bad gyro", false);
 		if (bad_gyro) {
 			gyroCorrect = false;
 		}
 
 		driver_vision = true;
+		encoderReset();
+
 
 	}
 
@@ -654,6 +645,9 @@ public:
 
 
 	void TeleopPeriodic() override {
+		distance = (GetEncoderDistance(flencoder) + GetEncoderDistance(blencoder) + GetEncoderDistance(frencoder) + GetEncoderDistance(brencoder)) /4.0;
+		SmartDashboard::PutNumber("get distance", distance);
+
  		float angle = gyro->GetAngle() - change;
 		turnController.gyro_angle = angle;
 		DigitalLED::Color color1 {DigitalLED::Lime};
@@ -792,7 +786,6 @@ public:
 			led->Set(0,0,0);
 
 		SmartDashboard::PutNumber("raw", flencoder->GetRaw());
-		SmartDashboard::PutNumber("get distance", distance);
 
 	}
 
