@@ -82,7 +82,7 @@ public:
 		/*if (isUp()) {
 			speed = 0;
 		}*/
-		winch->Set(speed);
+		winch->Set(speed/1.5);
 		speed = 0;
 	}
 private:
@@ -153,9 +153,6 @@ public:
 
 	frc::AnalogGyro *gyro; //practice bot with analog
 //	frc::ADXRS450_Gyro *gyro; //real bot
-//	Relay redLED;
-//	Relay greenLED;
-//	Relay blueLED;
 
 	VictorSP fl {FRONT_LEFT_PWM};
 	VictorSP bl {BACK_LEFT_PWM};
@@ -200,8 +197,8 @@ public:
 		grip::GripPipeline * pipeline;
 
 		pipeline = new grip::GripPipeline();
-		cs::UsbCamera vision_camera ("cam0", 0);
-		cs::UsbCamera driver_camera ("cam1", 1);
+		cs::UsbCamera vision_camera ("cam1", 1);
+		cs::UsbCamera driver_camera ("cam0", 0);
 		cv::Mat image;
 		cv::Mat temp_image;
 		bool g_frame = false;
@@ -213,10 +210,10 @@ public:
 		driver_camera = server->StartAutomaticCapture(0);
 		vision_camera = server->StartAutomaticCapture(1);
 		vision_camera.SetResolution(320,240);
-		driver_camera.SetResolution(640,480);
+		//driver_camera.SetResolution(640,480);
 
 
-		driver_camera.SetFPS(24);
+		//driver_camera.SetFPS(24);
 
 
 		//string name = "serve_" + vision_camera.GetName();
@@ -227,7 +224,7 @@ public:
 
 		bool setExposure = true;
 		vision_camera.SetExposureManual(30);
-		driver_camera.SetExposureAuto();
+		//driver_camera.SetExposureAuto();
 
 		while(1) {
 			if (driver_vision) {
@@ -262,12 +259,12 @@ public:
 //				}
 				pipeline->Process(image);
 			}
-//			if (!driver_vision) {
-//				outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
-//			}
-//			else {
+			if (!driver_vision) {
+				outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
+			}
+			else {
 				outputStream.PutFrame(image);
-			//}
+			}
 
 		}
 
@@ -490,12 +487,9 @@ public:
 						else {
 							y_speed = 0.5;
 						}
-						if (time < 0.75) {
-							winch.Set(1);
-						}
-						else {
+
 							arm->toSwitchNoPot();
-						}
+							intake->toIntake();
 					}
 
 					else if (time > 1 && time < 8) {
@@ -569,7 +563,7 @@ public:
 						x_speed = 0;
 						y_speed = 0;
 						if(output_cube){
-							//intake->toOutput();
+							intake->toOutput();
 						}
 						if (toscale || toswitch) {
 							float after_turn_speed = 0;
