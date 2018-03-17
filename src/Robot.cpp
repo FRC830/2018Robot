@@ -55,6 +55,42 @@ public :
 };
 
 
+class Winch {
+public:
+	Winch(DigitalInput *limitSwitch, VictorSP *winch): limitSwitch(limitSwitch), winch(winch) {
+	}
+	void Set(float speed) {
+		if (speed < 0) {
+			speed = speed/2;
+		}
+		this->speed = speed;
+	}
+	void toUp() {
+		speed = 1;
+	}
+	void toDown() {
+		speed = -0.5;
+	}
+	void stop() {
+		speed = 0;
+	}
+	bool isUp() {
+		return limitSwitch->Get();
+	};
+	void update() {
+		SmartDashboard::PutNumber("winch speed", winch->Get());
+		/*if (isUp()) {
+			speed = 0;
+		}*/
+		winch->Set(speed);
+		speed = 0;
+	}
+private:
+	DigitalInput *limitSwitch;
+	VictorSP *winch;
+	float speed = 0.0;
+
+};
 
 class Robot: public frc::IterativeRobot {
 private:
@@ -66,28 +102,29 @@ private:
 
 	enum AutoMode {NOTHING, CENTER = 2, LEFT = -1, RIGHT = 1, STRAIGHT = 3};
 public:
-	//static const int FRONT_LEFT_PWM = 0; //real
-	//static const int BACK_LEFT_PWM = 1; //real
-	//static const int FRONT_RIGHT_PWM = 6; //real
-	//static const int BACK_RIGHT_PWM = 7; //real
+	static const int FRONT_LEFT_PWM = 0; //real
+	static const int BACK_LEFT_PWM = 1; //real
+	static const int FRONT_RIGHT_PWM = 6; //real
+	static const int BACK_RIGHT_PWM = 7; //real
 
-	static const int FRONT_LEFT_PWM = 6; //practice
-	static const int BACK_LEFT_PWM = 7; //practice
-	static const int FRONT_RIGHT_PWM = 0; //practice originally 1
-	static const int BACK_RIGHT_PWM = 3; //practice
+//	static const int FRONT_LEFT_PWM = 6; //practice
+//	static const int BACK_LEFT_PWM = 7; //practice
+//	static const int FRONT_RIGHT_PWM = 0; //practice originally 1
+//	static const int BACK_RIGHT_PWM = 3; //practice
 
 
 	static const int LEFT_INTAKE_PWM = 4; //practice bot and real
-//	static const int RIGHT_INTAKE_PWM = 3; //real bot
-	static const int RIGHT_INTAKE_PWM = 1; //practice bot
+	static const int RIGHT_INTAKE_PWM = 3; //real bot
+//	static const int RIGHT_INTAKE_PWM = 1; //practice bot
 
-//	static const int ARM_PWM = 9; //real
-	static const int ARM_PWM = 8; //practice
+	static const int ARM_PWM = 9; //real
+//	static const int ARM_PWM = 8; //practice
 
 
-	static const int WINCH_PWM = 5;
+	static const int WINCH_PWM = 2;
+	static const int LIMIT_SWITCH_DIO = 9;
 
-	static const int RED_LED_DIO = 9;
+	static const int RED_LED_DIO = 21;
 	static const int GREEN_LED_DIO = 24;
 	static const int BLUE_LED_DIO = 25;
 
@@ -114,8 +151,8 @@ public:
 	Lib830::GamepadF310 * pilot;
 	Lib830::GamepadF310 * copilot;
 
-	frc::AnalogGyro *gyro;
-//	frc::ADXRS450_Gyro *gyro;
+	frc::AnalogGyro *gyro; //practice bot with analog
+//	frc::ADXRS450_Gyro *gyro; //real bot
 //	Relay redLED;
 //	Relay greenLED;
 //	Relay blueLED;
@@ -124,7 +161,7 @@ public:
 	VictorSP bl {BACK_LEFT_PWM};
 	VictorSP fr {FRONT_RIGHT_PWM};
 	VictorSP br {BACK_RIGHT_PWM};
-	VictorSP winch {WINCH_PWM};
+
 	Timer timer;
 
 	TurnController turnController;
@@ -147,6 +184,8 @@ public:
 	Toggle gyroCorrect {true};
 	Toggle armManual {true};
 
+	Winch winch {new DigitalInput(LIMIT_SWITCH_DIO), new VictorSP(WINCH_PWM)};
+	//VictorSP winch {WINCH_PWM};
 
 	Encoder *flencoder;
 	Encoder *blencoder;
@@ -187,6 +226,8 @@ public:
 
 
 		bool setExposure = true;
+		vision_camera.SetExposureManual(30);
+		driver_camera.SetExposureAuto();
 
 		while(1) {
 			if (driver_vision) {
@@ -207,22 +248,27 @@ public:
 			if (!g_frame) {
 				continue;
 			}
-			if (vision) {
-				if (setExposure) {
-					vision_camera.SetExposureManual(30);
-					setExposure = false;
-				}
+			if (!driver_vision) {
+//				if (setExposure) {
+//					vision_camera.SetExposureManual(30);
+//					setExposure = false;
+//				}
+//				pipeline->Process(image);
+//			}
+//			else {
+//				if (!setExposure) {
+//					vision_camera.SetExposureAuto();
+//					setExposure = true;
+//				}
 				pipeline->Process(image);
 			}
-			else {
-				if (!setExposure) {
-					vision_camera.SetExposureAuto();
-					setExposure = true;
-				}
-			}
-			//outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
+//			if (!driver_vision) {
+//				outputStream.PutFrame(*pipeline->GetHslThresholdOutput());
+//			}
+//			else {
+				outputStream.PutFrame(image);
+			//}
 
-			outputStream.PutFrame(image);
 		}
 
 	}
@@ -233,7 +279,7 @@ public:
 		frc::SmartDashboard::PutData("Auto Modes", &chooser); */
 
 		gyro = 	new frc::AnalogGyro(ANLOG_GYRO);
-//		gyro = new frc::ADXRS450_Gyro();
+		//gyro = new frc::ADXRS450_Gyro();
 
 		drive = new MecanumDrive (
 				fl,
@@ -314,6 +360,13 @@ public:
 		SmartDashboard::PutNumber("pulse per rev", 1024);
 		SmartDashboard::PutBoolean("bad gyro", false);
 
+		SmartDashboard::PutNumber("hue min", 70);
+		SmartDashboard::PutNumber("hue max", 100);
+		SmartDashboard::PutNumber("sat min", 0);
+		SmartDashboard::PutNumber("sat max", 255);
+		SmartDashboard::PutNumber("lum min", 200);
+		SmartDashboard::PutNumber("lum max", 255);
+
 	}
 
 	double GetEncoderDistance(Encoder *encoder) {
@@ -373,9 +426,6 @@ public:
 
 		bad_gyro = SmartDashboard::GetBoolean("bad gyro", false);
 		gyro_turn = 0;
-
-
-
 	}
 
 	float StrafeVisionCorrect(){
@@ -422,10 +472,7 @@ public:
 				float x_speed = 0;
 				float y_speed = 0;
 				float angle = gyro->GetAngle() + gyro_turn;
-				float rot = 0;
-				if (!bad_gyro) {
-						rot = angle/-30;
-				}
+				float rot = angle/-30;
 
 
 				float time = timer.Get();
@@ -443,8 +490,8 @@ public:
 						else {
 							y_speed = 0.5;
 						}
-						if (time < 0.5) {
-							//winch.Set(1);
+						if (time < 0.75) {
+							winch.Set(1);
 						}
 						else {
 							arm->toSwitchNoPot();
@@ -456,15 +503,10 @@ public:
 						intake->toIntake();
 						//arm->toSwitch();
 						arm->toSwitchNoPot();
-						if (time < 1.5) {
-							//winch.Set(-1.0);
+						if (time > 1.5) {
+							winch.Set(-1.0);
 						}
-						else if (time > 2.5 && time < 4) {
-							//winch.Set(-1);
-						}
-						else {
-							//winch.Set(0);
-						}
+
 
 						if (acquired) {
 							y_speed = 0.3; //set speed to be slower
@@ -488,7 +530,8 @@ public:
 								}
 							else if (mes == 'R') {
 								toswitch = true;
-								if (time > 5) {
+								if (time > 4.75) { //sketch\[][]
+
 									y_speed = 0;
 								}
 							}
@@ -498,7 +541,7 @@ public:
 							y_speed = 0.5;
 							if (mes == 'L') {
 								toswitch = true;
-								if (time > 5) {
+								if (time > 4.75) {
 									y_speed = 0;
 								}
 							}
@@ -526,20 +569,18 @@ public:
 						x_speed = 0;
 						y_speed = 0;
 						if(output_cube){
-							intake->toOutput();
+							//intake->toOutput();
 						}
 						if (toscale || toswitch) {
-							float move_time = 0;
 							float after_turn_speed = 0;
 							if (toscale) {
-								move_time = 10;
 								after_turn_speed = 0.2;
+								winch.Set(1);
 							}
 							else {
-								move_time = 5;
 								after_turn_speed = 0.7;
 							}
-							if (time < move_time) {
+							if (time < 10) {
 								if (mode == LEFT) {
 									//angle = gyro->GetAngle() - 90;
 									gyro_turn = -90;
@@ -551,13 +592,14 @@ public:
 									rot = angle/-90;
 								}
 							}
-							else if (time > move_time && time < (move_time + 1.5)) {
+							else if (time > 10 && time < 11.5) {
 								y_speed = after_turn_speed;
 							}
 							else {
 								y_speed = 0;
 								rot = 0;
-								intake->toOutput();
+								//intake->toOutput();
+								output_cube = true;
 							}
 						}
 					}
@@ -566,12 +608,16 @@ public:
 				SmartDashboard::PutNumber("get distance", distance);
 				SmartDashboard::PutNumber("raw", flencoder->GetRaw());
 
+				if (bad_gyro) {
+					rot = 0;
+				}
 
 				float f_x_speed = accel(prev_x_speed, x_speed, TICKS_TO_ACCEL);
 				float f_y_speed = accel(prev_y_speed, y_speed, TICKS_TO_ACCEL);
 				drive->DriveCartesian(f_x_speed/1.5, f_y_speed/1.5, rot, 0);
 				arm->armMoveUpdate();
 				intake->update();
+				winch.update();
 
 				SmartDashboard::PutNumber("x speed", f_x_speed);
 				SmartDashboard::PutNumber("y speed", f_y_speed);
@@ -616,7 +662,7 @@ public:
 		gyroTarget = 0;
 		led->Disable();
 
-		bad_gyro = SmartDashboard::GetBoolean("bad gyro", false);
+		bad_gyro = SmartDashboard::GetBoolean("bad gyro", true);
 		if (bad_gyro) {
 			gyroCorrect = false;
 		}
@@ -698,22 +744,15 @@ public:
 		SmartDashboard::PutNumber("actual left y", pilot->LeftY());
 
 
+
+		winch.Set(deadZone(copilot->LeftY()));
+
 		down.toggle(copilot->LeftTrigger());
 		up.toggle(copilot->RightTrigger());
 		if (armManual.toggle(copilot->ButtonState(GamepadF310::BUTTON_START))){
 			arm->rawPosition(copilot->RightTrigger()-(copilot->LeftTrigger()/2));
 			if (copilot->RightTrigger() && !copilot->DPadLeft()) {
 				intake->toIntake();
-			}
-
-			if(copilot->DPadUp()){
-				winch.Set(1);
-			}
-			else if (copilot->DPadDown()) {
-				winch.Set(-1);
-			}
-			else{
-				winch.Set(0);
 			}
 
 			color2 = DigitalLED::Cyan;
@@ -742,6 +781,7 @@ public:
 		}
 		arm->armMoveUpdate();
 		intake->update();
+		winch.update();
 
 	}
 
@@ -764,7 +804,9 @@ public:
 
 	void RobotPeriodic() override {
 		vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_B));
-		driver_vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_X));
+		driver_vision.toggle(pilot->ButtonState(GamepadF310::BUTTON_BACK));
+		SmartDashboard::PutBoolean("vision", vision);
+		SmartDashboard::PutBoolean("driver vision", driver_vision);
 
 		SmartDashboard::PutNumber("pot position",arm->getRawPosition());
 		SmartDashboard::PutNumber("front left", fl.Get());
@@ -772,7 +814,7 @@ public:
 		SmartDashboard::PutNumber("front right", fr.Get());
 		SmartDashboard::PutNumber("back right", br.Get());
 		SmartDashboard::PutNumber("gyro", gyro->GetAngle());
-
+		//SmartDashboard::PutBoolean("limit switch",winch.isUp());
 
 //		redLED.Set(Relay::kOn);
 //		greenLED.Set(Relay::kOn);

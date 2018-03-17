@@ -22,16 +22,20 @@ void GripPipeline::Process(cv::Mat& source0){
 	//Step HSL_Threshold0:
 	//input
 
-	/*double hue_min = SmartDashboard::GetNumber("hue min", 60);
+	double hue_min = SmartDashboard::GetNumber("hue min", 60);
 	double hue_max = SmartDashboard::GetNumber("hue max", 108);
 	double saturation_min = SmartDashboard::GetNumber("sat min", 131);
 	double saturation_max = SmartDashboard::GetNumber("sat max", 255);
 	double luminance_min = SmartDashboard::GetNumber("lum min", 140);
-	double luminance_max = SmartDashboard::GetNumber("lum max", 220);*/
+	double luminance_max = SmartDashboard::GetNumber("lum max", 220);
 	cv::Mat hslThresholdInput = source0;
-	double hslThresholdHue[] = {60, 108};
-	double hslThresholdSaturation[] = {131, 255};
-	double hslThresholdLuminance[] = {140, 220};
+	double hslThresholdHue[] = {hue_min, hue_max};
+	double hslThresholdSaturation[] = {saturation_min, saturation_max};
+	double hslThresholdLuminance[] = {luminance_min, luminance_max};
+
+//	double hslThresholdHue[] = {60, 108};
+//	double hslThresholdSaturation[] = {131, 255};
+//	double hslThresholdLuminance[] = {140, 220};
 	hslThreshold(hslThresholdInput, hslThresholdHue, hslThresholdSaturation, hslThresholdLuminance, this->hslThresholdOutput);
 	//Step Find_Contours0:
 	//input
