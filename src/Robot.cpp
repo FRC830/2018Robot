@@ -63,12 +63,15 @@ public:
 		if (speed < 0) {
 			speed = speed/2;
 		}
+		winchTime.Reset();
 		this->speed = speed;
 	}
 	void toUp() {
+		winchTime.Start();
 		speed = 1;
 	}
 	void toDown() {
+		winchTime.Start();
 		speed = -0.5;
 	}
 	void stop() {
@@ -82,12 +85,15 @@ public:
 		/*if (isUp()) {
 			speed = 0;
 		}*/
-		winch->Set(speed);
+		if (winchTime.Get() < 7) {
+			winch->Set(speed);
+		}
 		speed = 0;
 	}
 private:
 	DigitalInput *limitSwitch;
 	VictorSP *winch;
+	Timer winchTime;
 	float speed = 0.0;
 
 };
@@ -452,7 +458,7 @@ public:
 	float prev_y_speed = 0;
 	float prev_x_speed = 0;
 
-	float SCALE_DIST = 305;
+	static constexpr float SCALE_DIST = 305;
 	float distance = 0;
 	void AutonomousPeriodic() {
 		string message = frc::DriverStation::GetInstance().GetGameSpecificMessage();
@@ -490,12 +496,8 @@ public:
 						else {
 							y_speed = 0.5;
 						}
-						if (time < 0.75) {
-							winch.Set(1);
-						}
-						else {
-							arm->toSwitchNoPot();
-						}
+						arm->toSwitchNoPot();
+						intake->toIntake();
 					}
 
 					else if (time > 1 && time < 8) {
@@ -503,10 +505,6 @@ public:
 						intake->toIntake();
 						//arm->toSwitch();
 						arm->toSwitchNoPot();
-						if (time > 1.5) {
-							winch.Set(-1.0);
-						}
-
 
 						if (acquired) {
 							y_speed = 0.3; //set speed to be slower
@@ -552,7 +550,7 @@ public:
 							}
 							break;
 						case STRAIGHT:
-							if (time > 3.5) {
+							if (time > 6) {
 								y_speed = 0;
 							}
 
@@ -575,7 +573,7 @@ public:
 							float after_turn_speed = 0;
 							if (toscale) {
 								after_turn_speed = 0.2;
-								winch.Set(1);
+								winch.toUp();
 							}
 							else {
 								after_turn_speed = 0.7;
