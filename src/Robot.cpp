@@ -183,10 +183,10 @@ public:
 
 	Arm *arm;
 	Intake *intake;
-
+ 
 	DigitalLED *relayLED;
 
-	Toggle gyroCorrect {true};
+	Toggle gyroCorrect {false};
 	Toggle armManual {true};
 
 	Winch winch {new DigitalInput(LIMIT_SWITCH_DIO), new VictorSP(WINCH_PWM)};
@@ -363,7 +363,7 @@ public:
 		frencoder = new Encoder(FR_ENCODER_DIO_ONE, FR_ENCODER_DIO_TWO);
 		brencoder = new Encoder(BR_ENCODER_DIO_ONE, BR_ENCODER_DIO_TWO);
 		SmartDashboard::PutNumber("pulse per rev", 1024);
-		SmartDashboard::PutBoolean("bad gyro", false);
+		// SmartDashboard::PutBoolean("bad gyro", false);
 
 		SmartDashboard::PutNumber("hue min", 70);
 		SmartDashboard::PutNumber("hue max", 100);
